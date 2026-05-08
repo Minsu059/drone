@@ -34,3 +34,8 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# 서버 측 (DB, 받은 이미지, 임시 백업)
+*.db
+server/images/
+_backup/
