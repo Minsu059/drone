@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Virtual environment
+drone/
+venv/
+.venv/
+env/
+
+# External / heavy data (다운로드 스크립트로 재생성)
+data/
+
+# osmnx Overpass API 응답 캐시 (자동 생성)
+cache/
+
+# Secrets — VWorld API 키, DB 비밀번호 등
+.env
+.env.*
+!.env.example
+
+# Claude Code 프로젝트 메모/설정
+.claude/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo

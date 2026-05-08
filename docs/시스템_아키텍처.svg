@@ -1,0 +1,178 @@
+<svg viewBox="0 0 850 620" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    text { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; fill: #1a1a2e; }
+    .title { font-size: 15px; font-weight: 700; }
+    .box { rx: 10; ry: 10; stroke-width: 1.5; }
+    .label { font-size: 11px; font-weight: 600; }
+    .detail { font-size: 9px; fill: #64748b; }
+    .arrow { stroke-width: 2; fill: none; }
+    .protocol { font-size: 8px; font-weight: 600; fill: #6366f1; }
+    .step-num { font-size: 10px; font-weight: 700; fill: white; }
+    .section-label { font-size: 10px; font-weight: 600; fill: #64748b; }
+    .flow-num { font-size: 9px; font-weight: 700; fill: white; }
+  </style>
+  <defs>
+    <marker id="ah" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#6366f1" />
+    </marker>
+    <marker id="ah-amber" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#f59e0b" />
+    </marker>
+    <marker id="ah-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#10b981" />
+    </marker>
+    <marker id="ah-red" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#ef4444" />
+    </marker>
+  </defs>
+
+  <!-- 배경 -->
+  <rect width="850" height="620" fill="#ffffff"/>
+
+  <!-- 제목 -->
+  <text x="425" y="25" text-anchor="middle" class="title">드론 재난 대응 시스템 — 데이터 흐름 (v3)</text>
+
+  <!-- ===== 드론 영역 ===== -->
+  <rect x="15" y="42" width="310" height="555" rx="12" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="170" y="60" text-anchor="middle" class="section-label">드론 (현장) — Raspberry Pi 4</text>
+
+  <!-- 가상 GPS -->
+  <rect x="35" y="75" width="125" height="55" class="box" fill="#fff7ed" stroke="#fb923c"/>
+  <circle cx="52" cy="93" r="9" fill="#fb923c"/>
+  <text x="52" y="96" text-anchor="middle" class="step-num">1</text>
+  <text x="105" y="95" text-anchor="middle" class="label">가상 GPS</text>
+  <text x="105" y="109" text-anchor="middle" class="detail">랜덤 좌표 생성</text>
+  <text x="105" y="121" text-anchor="middle" class="detail" style="fill:#fb923c">(추후 M9N 교체)</text>
+
+  <!-- 카메라 -->
+  <rect x="185" y="75" width="125" height="55" class="box" fill="#ffffff" stroke="#cbd5e1"/>
+  <circle cx="202" cy="93" r="9" fill="#10b981"/>
+  <text x="202" y="96" text-anchor="middle" class="step-num">2</text>
+  <text x="255" y="95" text-anchor="middle" class="label">카메라 모듈 3</text>
+  <text x="255" y="109" text-anchor="middle" class="detail">재난 상황 촬영</text>
+  <text x="255" y="121" text-anchor="middle" class="detail">CSI 연결</text>
+
+  <!-- Raspberry Pi 4 -->
+  <rect x="35" y="165" width="275" height="65" class="box" fill="#ffffff" stroke="#6366f1" stroke-width="2"/>
+  <circle cx="52" cy="185" r="9" fill="#6366f1"/>
+  <text x="52" y="188" text-anchor="middle" class="step-num">3</text>
+  <text x="182" y="183" text-anchor="middle" class="label">Raspberry Pi 4 (8GB)</text>
+  <text x="182" y="197" text-anchor="middle" class="detail">가상 GPS 좌표 생성 + Edge AI 분류</text>
+  <text x="182" y="211" text-anchor="middle" class="detail">TFLite / picamera2 / requests / Python</text>
+
+  <!-- GPS → RPi -->
+  <path d="M 97 130 L 97 163" class="arrow" stroke="#fb923c" marker-end="url(#ah-amber)"/>
+  <text x="110" y="150" class="protocol" style="fill:#fb923c">좌표 데이터</text>
+
+  <!-- Camera → RPi -->
+  <path d="M 247 130 L 247 163" class="arrow" stroke="#6366f1" marker-end="url(#ah)"/>
+  <text x="263" y="150" class="protocol">CSI</text>
+
+  <!-- Edge AI 분류 항목 -->
+  <rect x="35" y="255" width="275" height="95" class="box" fill="#eef2ff" stroke="#a5b4fc"/>
+  <text x="172" y="273" text-anchor="middle" class="label" style="fill:#4338ca">Edge AI 분류 항목</text>
+  <text x="45" y="290" class="detail" style="fill:#4338ca">• 인명 감지: 사람 수 (정수)</text>
+  <text x="45" y="304" class="detail" style="fill:#4338ca">• 건물 붕괴율: 외벽 크랙 기반 (0~100%)</text>
+  <text x="45" y="318" class="detail" style="fill:#4338ca">• 도로 상태: 정상 / 정체 / 통행불가</text>
+  <text x="45" y="332" class="detail" style="fill:#4338ca">• 화재 감지: 여부 + 신뢰도</text>
+
+  <!-- RPi → 분류 -->
+  <path d="M 172 230 L 172 253" class="arrow" stroke="#4338ca" marker-end="url(#ah)"/>
+
+  <!-- JSON 전송 -->
+  <rect x="35" y="375" width="275" height="38" class="box" fill="#ede9fe" stroke="#c4b5fd"/>
+  <text x="172" y="390" text-anchor="middle" class="detail" style="fill:#6366f1; font-weight:600">JSON: GPS좌표 + 분류결과 + 타임스탬프 + 이미지(Base64)</text>
+  <text x="172" y="404" text-anchor="middle" class="detail" style="fill:#6366f1">HTTP POST / WiFi (같은 공유기)</text>
+
+  <!-- 분류 → JSON -->
+  <path d="M 172 350 L 172 373" class="arrow" stroke="#6366f1" marker-end="url(#ah)"/>
+
+  <!-- 전송 구분 -->
+  <rect x="35" y="435" width="275" height="55" class="box" fill="#f0fdf4" stroke="#86efac"/>
+  <text x="172" y="453" text-anchor="middle" class="label" style="fill:#166534">전송 데이터 구분</text>
+  <text x="45" y="468" class="detail" style="fill:#166534">① 현재 위치: 주기적 전송 (1~5초)</text>
+  <text x="45" y="482" class="detail" style="fill:#166534">② 재난 분석: 감지 시에만 전송</text>
+
+  <!-- ===== 서버 영역 ===== -->
+  <rect x="380" y="42" width="455" height="555" rx="12" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="607" y="60" text-anchor="middle" class="section-label">메인 서버 (관제센터) — Windows 데스크탑</text>
+
+  <!-- API 서버 -->
+  <rect x="405" y="75" width="405" height="50" class="box" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/>
+  <circle cx="423" cy="95" r="9" fill="#f59e0b"/>
+  <text x="423" y="98" text-anchor="middle" class="step-num">4</text>
+  <text x="620" y="93" text-anchor="middle" class="label">API 서버 (수신)</text>
+  <text x="620" y="107" text-anchor="middle" class="detail">FastAPI — POST /api/drone-data — JSON 수신 및 검증</text>
+
+  <!-- JSON → API -->
+  <path d="M 310 394 L 350 394 Q 370 394 370 370 L 370 100 L 403 100" class="arrow" stroke="#f59e0b" marker-end="url(#ah-amber)"/>
+  <text x="360" y="250" class="protocol" style="fill:#f59e0b">HTTP POST</text>
+  <text x="360" y="261" class="protocol" style="fill:#f59e0b">JSON</text>
+
+  <!-- DB 저장 -->
+  <rect x="405" y="148" width="405" height="45" class="box" fill="#ffffff" stroke="#10b981" stroke-width="2"/>
+  <circle cx="423" cy="168" r="9" fill="#10b981"/>
+  <text x="423" y="171" text-anchor="middle" class="step-num">5</text>
+  <text x="620" y="165" text-anchor="middle" class="label">DB 저장</text>
+  <text x="620" y="179" text-anchor="middle" class="detail">SQLite (데모) / PostgreSQL + PostGIS</text>
+
+  <!-- API → DB -->
+  <path d="M 607 125 L 607 146" class="arrow" stroke="#10b981" marker-end="url(#ah-green)"/>
+  <rect x="590" y="130" width="35" height="14" rx="7" fill="#10b981"/>
+  <text x="607" y="140" text-anchor="middle" class="flow-num">먼저</text>
+
+  <!-- 위험도 추론 모델 -->
+  <rect x="405" y="218" width="405" height="75" class="box" fill="#ffffff" stroke="#ef4444" stroke-width="2"/>
+  <circle cx="423" cy="238" r="9" fill="#ef4444"/>
+  <text x="423" y="241" text-anchor="middle" class="step-num">6</text>
+  <text x="620" y="237" text-anchor="middle" class="label">위험도 추론 모델</text>
+  <text x="620" y="252" text-anchor="middle" class="detail">GPS 기반 구역(그리드) 매핑 → 붕괴율 + 인명 + 화재 종합</text>
+  <text x="620" y="265" text-anchor="middle" class="detail">구역별 위험도 점수 (0~100) → 구조 우선순위 랭킹</text>
+  <text x="620" y="285" text-anchor="middle" class="detail" style="fill:#ef4444">PyTorch / scikit-learn</text>
+
+  <!-- DB → 위험도 -->
+  <path d="M 607 193 L 607 216" class="arrow" stroke="#ef4444" marker-end="url(#ah-red)"/>
+
+  <!-- 경로 추론 엔진 -->
+  <rect x="405" y="318" width="405" height="70" class="box" fill="#ffffff" stroke="#ef4444" stroke-width="2"/>
+  <circle cx="423" cy="338" r="9" fill="#ef4444"/>
+  <text x="423" y="341" text-anchor="middle" class="step-num">7</text>
+  <text x="620" y="337" text-anchor="middle" class="label">경로 추론 엔진</text>
+  <text x="620" y="352" text-anchor="middle" class="detail">교통 상황 + 붕괴 구간 반영 → 구조 진입 경로 필터링</text>
+  <text x="620" y="365" text-anchor="middle" class="detail">최단/최적 경로 계산 (A* / Dijkstra)</text>
+  <text x="620" y="380" text-anchor="middle" class="detail" style="fill:#ef4444">NetworkX / OSRM</text>
+
+  <!-- 위험도 → 경로 -->
+  <path d="M 607 293 L 607 316" class="arrow" stroke="#ef4444" marker-end="url(#ah-red)"/>
+
+  <!-- 대시보드 -->
+  <rect x="405" y="413" width="405" height="70" class="box" fill="#ffffff" stroke="#6366f1" stroke-width="2"/>
+  <circle cx="423" cy="433" r="9" fill="#6366f1"/>
+  <text x="423" y="436" text-anchor="middle" class="step-num">8</text>
+  <text x="620" y="432" text-anchor="middle" class="label">실시간 관제 대시보드 (지도)</text>
+  <text x="620" y="447" text-anchor="middle" class="detail">드론 위치 + 구역별 위험도 히트맵 + 구조 우선순위 패널</text>
+  <text x="620" y="460" text-anchor="middle" class="detail">추천 구조 진입 경로 표시 + 재난 마커</text>
+  <text x="620" y="475" text-anchor="middle" class="detail" style="fill:#6366f1">React + Leaflet 또는 Folium</text>
+
+  <!-- 경로 → 대시보드 -->
+  <path d="M 607 388 L 607 411" class="arrow" stroke="#6366f1" marker-end="url(#ah)"/>
+
+  <!-- 범례 -->
+  <rect x="405" y="505" width="405" height="38" rx="8" fill="#ffffff" stroke="#e2e8f0"/>
+  <circle cx="425" cy="518" r="4" fill="#fb923c"/>
+  <text x="435" y="521" class="detail">가상GPS</text>
+  <circle cx="475" cy="518" r="4" fill="#f59e0b"/>
+  <text x="485" y="521" class="detail">수신</text>
+  <circle cx="515" cy="518" r="4" fill="#10b981"/>
+  <text x="525" y="521" class="detail">저장</text>
+  <circle cx="560" cy="518" r="4" fill="#ef4444"/>
+  <text x="570" y="521" class="detail">추론</text>
+  <circle cx="605" cy="518" r="4" fill="#6366f1"/>
+  <text x="615" y="521" class="detail">관제</text>
+  <text x="607" y="536" text-anchor="middle" class="detail">순서: 수신 → 저장 → 위험도 추론 → 경로 계산 → 대시보드</text>
+
+  <!-- 하단 메모 -->
+  <rect x="15" y="560" width="310" height="35" rx="8" fill="#fff7ed" stroke="#fed7aa"/>
+  <text x="170" y="575" text-anchor="middle" class="detail" style="fill:#9a3412; font-weight:600">GPS: 가상 데이터 (추후 Holybro M9N 교체)</text>
+  <text x="170" y="587" text-anchor="middle" class="detail" style="fill:#9a3412">Pixhawk 미사용 — RPi에서 직접 처리</text>
+</svg>
