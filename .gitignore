@@ -13,11 +13,11 @@ venv/
 .venv/
 env/
 
-# External / heavy data (다운로드 스크립트로 재생성)
-data/
+# External / heavy data (다운로드 스크립트로 재생성) — 루트 한정
+/data/
 
-# osmnx Overpass API 응답 캐시 (자동 생성)
-cache/
+# osmnx Overpass API 응답 캐시 (자동 생성) — 루트 한정
+/cache/
 
 # Secrets — VWorld API 키, DB 비밀번호 등
 .env
@@ -35,7 +35,12 @@ Thumbs.db
 *.swp
 *.swo
 
-# ���� �� (DB, ���� �̹���, �ӽ� ���)
+# Frontend (Vite + React)
+server/dashboard/node_modules/
+server/dashboard/dist/
+server/dashboard/.vite/
+
+# ���� �� (DB, ���� �̹���, �ӽ� ���)
 *.db
 server/images/
 _backup/
