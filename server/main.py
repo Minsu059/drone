@@ -2,14 +2,28 @@ import base64
 import os
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from models import DroneData
 from database import init_db, get_connection
+import miniature_map as mm
 
 IMAGES_DIR = os.path.join(os.path.dirname(__file__), "images")
 os.makedirs(IMAGES_DIR, exist_ok=True)
 
 app = FastAPI(title="드론 재난 대응 시스템 API")
+
+# CORS — Vite dev (5173) + 빌드 후 동일 호스트(8000) 모두 허용
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
 
 init_db()
 
@@ -107,3 +121,43 @@ async def get_report_image(report_id: int):
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok", "message": "서버 정상 동작 중"}
+
+
+# ============================================================
+# Dashboard 라우트 — 정적 가상 데이터를 frontend에 노출
+# 데이터 소스: miniature_map.py (SSOT)
+# ============================================================
+
+@app.get("/api/dashboard/wide")
+async def dashboard_wide():
+    return {
+        "view": {
+            "center": list(mm.WIDE_VIEW["center"]),
+            "zoom": mm.WIDE_VIEW["zoom"],
+        },
+        "drones": mm.VIRTUAL_DRONES,
+        "disasters": mm.VIRTUAL_DISASTERS,
+        "miniature_entry": {
+            **mm.MINIATURE_ENTRY_POINT,
+            "center": list(mm.MINIATURE_ENTRY_POINT["center"]),
+        },
+    }
+
+
+@app.get("/api/dashboard/miniature")
+async def dashboard_miniature():
+    return {
+        "view": {
+            "center": list(mm.MINIATURE_VIEW["center"]),
+            "zoom": mm.MINIATURE_VIEW["zoom"],
+        },
+        "zones": [
+            {**z, "center": list(z["center"])} for z in mm.MINIATURE_ZONES
+        ],
+        "buildings": mm.MINIATURE_BUILDINGS,
+        "disasters": mm.MINIATURE_DISASTERS,
+        "road_nodes": {k: list(v) for k, v in mm.MINIATURE_ROAD_NODES.items()},
+        "road_edges": [list(e) for e in mm.MINIATURE_ROAD_EDGES],
+        "blocked_roads": [list(e) for e in mm.MINIATURE_BLOCKED_ROADS],
+        "congested_roads": [list(e) for e in mm.MINIATURE_CONGESTED_ROADS],
+    }

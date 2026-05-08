@@ -1,13 +1,13 @@
-import { useEffect } from 'react';
-import { MiniatureView } from './MiniatureView';
+import { useEffect, type ReactNode } from 'react';
 
 interface Props {
   open: boolean;
   zoneName?: string | null;
   onClose: () => void;
+  children?: ReactNode;
 }
 
-export function MiniatureModal({ open, zoneName, onClose }: Props) {
+export function MiniatureModal({ open, zoneName, onClose, children }: Props) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -39,7 +39,7 @@ export function MiniatureModal({ open, zoneName, onClose }: Props) {
         </button>
       </div>
       <div className="modal-map">
-        <MiniatureView />
+        {children}
       </div>
     </div>
   );

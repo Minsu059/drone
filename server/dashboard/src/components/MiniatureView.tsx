@@ -1,15 +1,9 @@
 import { useMemo } from 'react';
 import {
-  MINIATURE_ZONES,
-  MINIATURE_BUILDINGS,
-  MINIATURE_DISASTERS,
-  MINIATURE_ROAD_NODES,
-  MINIATURE_ROAD_EDGES,
-  MINIATURE_BLOCKED_ROADS,
-  MINIATURE_CONGESTED_ROADS,
   type RoadEdge,
   type MiniatureDisasterType,
 } from '../data/mockData';
+import type { MiniatureDashboardResponse } from '../api/dashboard';
 import { collapseRateToColor } from '../utils/coords';
 
 const SVG_W = 1200;
@@ -33,58 +27,70 @@ function ek(e: RoadEdge): string {
   return `${e[0]}-${e[1]}`;
 }
 
-function buildProjection() {
-  const allLats: number[] = [];
-  const allLons: number[] = [];
-
-  Object.values(MINIATURE_ROAD_NODES).forEach(([la, lo]) => {
-    allLats.push(la);
-    allLons.push(lo);
-  });
-  MINIATURE_ZONES.forEach((z) => {
-    allLats.push(z.center[0]);
-    allLons.push(z.center[1]);
-  });
-  MINIATURE_BUILDINGS.forEach((b) => {
-    allLats.push(b.lat);
-    allLons.push(b.lon);
-  });
-  MINIATURE_DISASTERS.forEach((d) => {
-    allLats.push(d.lat);
-    allLons.push(d.lon);
-  });
-
-  const latMin = Math.min(...allLats);
-  const latMax = Math.max(...allLats);
-  const lonMin = Math.min(...allLons);
-  const lonMax = Math.max(...allLons);
-
-  const innerW = SVG_W - 2 * PAD;
-  const innerH = SVG_H - 2 * PAD;
-  const svgPerMeter = innerH / ((latMax - latMin) * METER_PER_DEG_LAT);
-
-  function gps(lat: number, lon: number): [number, number] {
-    const x = PAD + ((lon - lonMin) / (lonMax - lonMin)) * innerW;
-    const y = PAD + ((latMax - lat) / (latMax - latMin)) * innerH;
-    return [x, y];
-  }
-
-  function meters(m: number): number {
-    return m * svgPerMeter;
-  }
-
-  return { gps, meters };
+interface Props {
+  miniature: MiniatureDashboardResponse;
 }
 
-export function MiniatureView() {
-  const { gps, meters } = useMemo(() => buildProjection(), []);
+export function MiniatureView({ miniature }: Props) {
+  const {
+    zones,
+    buildings,
+    disasters,
+    road_nodes,
+    road_edges,
+    blocked_roads,
+    congested_roads,
+  } = miniature;
+
+  const { gps, meters } = useMemo(() => {
+    const allLats: number[] = [];
+    const allLons: number[] = [];
+
+    Object.values(road_nodes).forEach(([la, lo]) => {
+      allLats.push(la);
+      allLons.push(lo);
+    });
+    zones.forEach((z) => {
+      allLats.push(z.center[0]);
+      allLons.push(z.center[1]);
+    });
+    buildings.forEach((b) => {
+      allLats.push(b.lat);
+      allLons.push(b.lon);
+    });
+    disasters.forEach((d) => {
+      allLats.push(d.lat);
+      allLons.push(d.lon);
+    });
+
+    const latMin = Math.min(...allLats);
+    const latMax = Math.max(...allLats);
+    const lonMin = Math.min(...allLons);
+    const lonMax = Math.max(...allLons);
+
+    const innerW = SVG_W - 2 * PAD;
+    const innerH = SVG_H - 2 * PAD;
+    const svgPerMeter = innerH / ((latMax - latMin) * METER_PER_DEG_LAT);
+
+    return {
+      gps(lat: number, lon: number): [number, number] {
+        const x = PAD + ((lon - lonMin) / (lonMax - lonMin)) * innerW;
+        const y = PAD + ((latMax - lat) / (latMax - latMin)) * innerH;
+        return [x, y];
+      },
+      meters(m: number): number {
+        return m * svgPerMeter;
+      },
+    };
+  }, [zones, buildings, disasters, road_nodes]);
+
   const blockedSet = useMemo(
-    () => new Set(MINIATURE_BLOCKED_ROADS.map(ek)),
-    [],
+    () => new Set(blocked_roads.map(ek)),
+    [blocked_roads],
   );
   const congestedSet = useMemo(
-    () => new Set(MINIATURE_CONGESTED_ROADS.map(ek)),
-    [],
+    () => new Set(congested_roads.map(ek)),
+    [congested_roads],
   );
 
   return (
@@ -104,12 +110,11 @@ export function MiniatureView() {
           </pattern>
         </defs>
 
-        {/* 그리드 (이후 미니어처 사진으로 교체 시 이 rect 두 개를 <image>로) */}
         <rect width={SVG_W} height={SVG_H} fill="#0b1220" />
         <rect width={SVG_W} height={SVG_H} fill="url(#mini-grid)" />
 
-        {/* 구역 (점선 원 + 라벨) */}
-        {MINIATURE_ZONES.map((z) => {
+        {/* 구역 */}
+        {zones.map((z) => {
           const [cx, cy] = gps(z.center[0], z.center[1]);
           const r = meters(z.radius_m);
           return (
@@ -136,9 +141,9 @@ export function MiniatureView() {
         })}
 
         {/* 도로 엣지 */}
-        {MINIATURE_ROAD_EDGES.map((e) => {
-          const [n1lat, n1lon] = MINIATURE_ROAD_NODES[e[0]];
-          const [n2lat, n2lon] = MINIATURE_ROAD_NODES[e[1]];
+        {road_edges.map((e) => {
+          const [n1lat, n1lon] = road_nodes[e[0]];
+          const [n2lat, n2lon] = road_nodes[e[1]];
           const [x1, y1] = gps(n1lat, n1lon);
           const [x2, y2] = gps(n2lat, n2lon);
           const k = ek(e);
@@ -167,7 +172,7 @@ export function MiniatureView() {
         })}
 
         {/* 노드 */}
-        {Object.entries(MINIATURE_ROAD_NODES).map(([id, [la, lo]]) => {
+        {Object.entries(road_nodes).map(([id, [la, lo]]) => {
           const [cx, cy] = gps(la, lo);
           return (
             <g key={`node-${id}`}>
@@ -184,8 +189,8 @@ export function MiniatureView() {
           );
         })}
 
-        {/* 건물 (사각형, 붕괴율 색상) */}
-        {MINIATURE_BUILDINGS.map((b) => {
+        {/* 건물 */}
+        {buildings.map((b) => {
           const [cx, cy] = gps(b.lat, b.lon);
           const color = collapseRateToColor(b.collapse_rate);
           const size = 30;
@@ -215,8 +220,8 @@ export function MiniatureView() {
           );
         })}
 
-        {/* 재난 (강조 원 + 중심) */}
-        {MINIATURE_DISASTERS.map((d) => {
+        {/* 재난 */}
+        {disasters.map((d) => {
           const [cx, cy] = gps(d.lat, d.lon);
           const color = DISASTER_COLOR[d.type];
           return (
@@ -244,21 +249,18 @@ export function MiniatureView() {
           );
         })}
 
-        {/* Legend (우상단) */}
+        {/* 범례 */}
         <g transform={`translate(${SVG_W - 240}, 30)`} className="legend">
           <rect width={220} height={150} rx={6} fill="rgba(15, 23, 42, 0.85)" stroke="#334155" />
           <text x={12} y={22} className="legend-title">범례</text>
-          {/* 도로 */}
           <line x1={12} y1={42} x2={42} y2={42} stroke="#64748b" strokeWidth={3} />
           <text x={50} y={46} className="legend-text">정상 도로</text>
           <line x1={12} y1={62} x2={42} y2={62} stroke="#f59e0b" strokeWidth={4} />
           <text x={50} y={66} className="legend-text">정체</text>
           <line x1={12} y1={82} x2={42} y2={82} stroke="#dc2626" strokeWidth={5} strokeDasharray="6 4" />
           <text x={50} y={86} className="legend-text">차단</text>
-          {/* 건물 */}
           <rect x={12} y={98} width={16} height={16} fill="#9ca3af" stroke="#0f172a" strokeWidth={1} rx={2} />
           <text x={36} y={111} className="legend-text">건물 (붕괴율 색상)</text>
-          {/* 재난 */}
           <circle cx={20} cy={130} r={6} fill="#dc2626" stroke="#0f172a" strokeWidth={1} />
           <text x={36} y={134} className="legend-text">재난 지점</text>
         </g>

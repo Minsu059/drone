@@ -1,18 +1,18 @@
 /**
- * server/miniature_map.py 의 가상 데이터를 TypeScript로 포팅.
- * Phase 2에서 백엔드 /api/dashboard/* 라우트 fetch로 교체 예정.
+ * Dashboard 데이터 타입 정의.
+ *
+ * 데이터 자체는 백엔드 server/miniature_map.py 가 단일 진실 소스(SSOT).
+ * /api/dashboard/wide, /api/dashboard/miniature 라우트로 fetch.
+ * 이 파일은 타입만 보유하며, mock 상수는 더 이상 export하지 않음.
+ *
+ * 파일명이 mockData인 건 Phase 1 잔재 — 후속에서 src/types/dashboard.ts 등으로 이동 가능.
  */
 
 export type LatLng = [number, number]; // [lat, lon] (Leaflet 표준)
 
 // ============================================================
-// 광역 뷰 — 한국항공대 중심
+// 광역 뷰
 // ============================================================
-
-export const WIDE_VIEW = {
-  center: [37.6000, 126.8645] as LatLng,
-  zoom: 13,
-};
 
 export interface VirtualDrone {
   drone_id: string;
@@ -20,13 +20,6 @@ export interface VirtualDrone {
   lat: number;
   lon: number;
 }
-
-export const VIRTUAL_DRONES: VirtualDrone[] = [
-  { drone_id: 'drone-v1', area: '덕양구 화정동', lat: 37.6150, lon: 126.8320 },
-  { drone_id: 'drone-v2', area: '덕양구 행신동', lat: 37.6120, lon: 126.8510 },
-  { drone_id: 'drone-v3', area: '은평구 진관동', lat: 37.6350, lon: 126.9150 },
-  { drone_id: 'drone-v4', area: '고양시 삼송동', lat: 37.6420, lon: 126.8900 },
-];
 
 export type DisasterType = 'fire' | 'flood' | 'earthquake' | 'landslide';
 export type RoadStatus = 'normal' | 'congested' | 'blocked';
@@ -46,105 +39,6 @@ export interface VirtualDisaster {
   impact_radius_m: number;
 }
 
-export const VIRTUAL_DISASTERS: VirtualDisaster[] = [
-  {
-    id: 'vd-1',
-    lat: 37.6150, lon: 126.8330,
-    disaster_type: 'fire',
-    description: '화정동 상가 화재',
-    person_count: 8,
-    collapse_rate: 30.0,
-    fire_detected: true,
-    fire_confidence: 0.92,
-    road_status: 'congested',
-    impact_radius_m: 150,
-  },
-  {
-    id: 'vd-2',
-    lat: 37.6350, lon: 126.9160,
-    disaster_type: 'flood',
-    description: '진관동 하천 범람',
-    person_count: 12,
-    collapse_rate: 15.0,
-    fire_detected: false,
-    fire_confidence: 0.0,
-    road_status: 'blocked',
-    impact_radius_m: 300,
-  },
-  {
-    id: 'vd-3',
-    lat: 37.6430, lon: 126.8910,
-    disaster_type: 'earthquake',
-    description: '삼송동 건물 균열',
-    person_count: 5,
-    collapse_rate: 65.0,
-    fire_detected: false,
-    fire_confidence: 0.0,
-    road_status: 'congested',
-    impact_radius_m: 200,
-  },
-  {
-    id: 'vd-4',
-    lat: 37.6080, lon: 126.8390,
-    disaster_type: 'fire',
-    description: '행신동 가스누출 화재',
-    person_count: 6,
-    collapse_rate: 20.0,
-    fire_detected: true,
-    fire_confidence: 0.85,
-    road_status: 'normal',
-    impact_radius_m: 130,
-  },
-  {
-    id: 'vd-5',
-    lat: 37.5870, lon: 126.8820,
-    disaster_type: 'flood',
-    description: '화전동 도로 침수',
-    person_count: 4,
-    collapse_rate: 5.0,
-    fire_detected: false,
-    fire_confidence: 0.0,
-    road_status: 'blocked',
-    impact_radius_m: 250,
-  },
-  {
-    id: 'vd-6',
-    lat: 37.6125, lon: 126.8175,
-    disaster_type: 'earthquake',
-    description: '능곡역 인근 건물 붕괴',
-    person_count: 9,
-    collapse_rate: 75.0,
-    fire_detected: false,
-    fire_confidence: 0.0,
-    road_status: 'congested',
-    impact_radius_m: 180,
-  },
-  {
-    id: 'vd-7',
-    lat: 37.6180, lon: 126.8910,
-    disaster_type: 'fire',
-    description: '향동 빌라 화재',
-    person_count: 3,
-    collapse_rate: 40.0,
-    fire_detected: true,
-    fire_confidence: 0.78,
-    road_status: 'normal',
-    impact_radius_m: 120,
-  },
-  {
-    id: 'vd-8',
-    lat: 37.6033, lon: 126.8260,
-    disaster_type: 'landslide',
-    description: '행주산성 산사태',
-    person_count: 2,
-    collapse_rate: 70.0,
-    fire_detected: false,
-    fire_confidence: 0.0,
-    road_status: 'blocked',
-    impact_radius_m: 220,
-  },
-];
-
 export interface ZoneRisk {
   name: string;
   center: LatLng;
@@ -152,26 +46,9 @@ export interface ZoneRisk {
   has_miniature?: boolean;
 }
 
-/**
- * 미니어처 드릴다운 진입점. 위험도 원/히트맵 용도가 아니라
- * "여기 클릭 → 미니어처 모달" 트리거 마커로만 사용.
- * 광역 위험도는 각 재난 marker의 영향 반경(impact_radius_m)으로 대체.
- */
-export const MINIATURE_ENTRY_POINT: ZoneRisk = {
-  name: '한국항공대',
-  center: [37.6000, 126.8645],
-  risk_score: 45,
-  has_miniature: true,
-};
-
 // ============================================================
-// 미니어처 뷰 — 한국항공대 캠퍼스
+// 미니어처 뷰
 // ============================================================
-
-export const MINIATURE_VIEW = {
-  center: [37.6000, 126.8645] as LatLng,
-  zoom: 18,
-};
 
 export interface MiniatureZone {
   key: string;
@@ -181,14 +58,6 @@ export interface MiniatureZone {
   description: string;
 }
 
-export const MINIATURE_ZONES: MiniatureZone[] = [
-  { key: 'A', name: 'A구역 (상단)',   center: [37.6008, 126.8645], radius_m: 30, description: '건물 2동, 주요 도로 인접' },
-  { key: 'B', name: 'B구역 (중앙)',   center: [37.6000, 126.8645], radius_m: 30, description: '대형 건물 1동, 교차로, 위쪽 도로 포화' },
-  { key: 'C', name: 'C구역 (우측)',   center: [37.6000, 126.8660], radius_m: 25, description: '건물 1동' },
-  { key: 'D', name: 'D구역 (좌하단)', center: [37.5992, 126.8632], radius_m: 25, description: '건물 1동' },
-  { key: 'E', name: 'E구역 (우하단)', center: [37.5992, 126.8658], radius_m: 25, description: '건물 1동, 화재 + 포장도로 파괴' },
-];
-
 export interface MiniatureBuilding {
   zone: string;
   lat: number;
@@ -196,15 +65,6 @@ export interface MiniatureBuilding {
   name: string;
   collapse_rate: number; // 0~100
 }
-
-export const MINIATURE_BUILDINGS: MiniatureBuilding[] = [
-  { zone: 'A', lat: 37.6010, lon: 126.8638, name: 'A-건물1',         collapse_rate: 0 },
-  { zone: 'A', lat: 37.6010, lon: 126.8652, name: 'A-건물2',         collapse_rate: 0 },
-  { zone: 'B', lat: 37.6000, lon: 126.8645, name: 'B-건물1 (대형)',  collapse_rate: 0 },
-  { zone: 'C', lat: 37.6000, lon: 126.8660, name: 'C-건물1',         collapse_rate: 0 },
-  { zone: 'D', lat: 37.5992, lon: 126.8632, name: 'D-건물1',         collapse_rate: 0 },
-  { zone: 'E', lat: 37.5992, lon: 126.8658, name: 'E-건물1',         collapse_rate: 0 },
-];
 
 export type MiniatureDisasterType = 'road_saturated' | 'road_damage' | 'fire';
 
@@ -217,51 +77,4 @@ export interface MiniatureDisaster {
   description: string;
 }
 
-export const MINIATURE_DISASTERS: MiniatureDisaster[] = [
-  { key: 'road_saturated', zone: 'B 위쪽 도로', lat: 37.6004, lon: 126.8643, type: 'road_saturated', description: '도로 포화 — 차량 진입 불가' },
-  { key: 'road_damage',    zone: 'D-E 사이',    lat: 37.5992, lon: 126.8645, type: 'road_damage',    description: '도로 파괴 구간 (통행불가)' },
-  { key: 'fire',           zone: 'E',           lat: 37.5992, lon: 126.8662, type: 'fire',           description: '화재 + 포장도로 파괴' },
-];
-
-// ============================================================
-// 미니어처 도로 그래프
-// ============================================================
-
 export type RoadEdge = [string, string]; // [from_node, to_node]
-
-export const MINIATURE_ROAD_NODES: Record<string, LatLng> = {
-  N1:  [37.6012, 126.8628], // 좌상단
-  N2:  [37.6012, 126.8645], // 상단 중앙
-  N3:  [37.6012, 126.8665], // 우상단
-  N4:  [37.6004, 126.8628], // B위-좌
-  N5:  [37.6004, 126.8645], // B위-중 (포화)
-  N6:  [37.6004, 126.8665], // B위-우
-  N7:  [37.5996, 126.8628], // 중앙-좌
-  N8:  [37.5996, 126.8645], // 중앙
-  N9:  [37.5996, 126.8665], // 중앙-우
-  N10: [37.5988, 126.8628], // 하단-좌
-  N11: [37.5988, 126.8645], // 하단-중 (파괴)
-  N12: [37.5988, 126.8665], // 하단-우
-};
-
-export const MINIATURE_ROAD_EDGES: RoadEdge[] = [
-  // 수평
-  ['N1', 'N2'], ['N2', 'N3'],
-  ['N4', 'N5'], ['N5', 'N6'],
-  ['N7', 'N8'], ['N8', 'N9'],
-  ['N10', 'N11'], ['N11', 'N12'],
-  // 수직
-  ['N1', 'N4'], ['N4', 'N7'], ['N7', 'N10'],
-  ['N2', 'N5'], ['N5', 'N8'], ['N8', 'N11'],
-  ['N3', 'N6'], ['N6', 'N9'], ['N9', 'N12'],
-];
-
-export const MINIATURE_BLOCKED_ROADS: RoadEdge[] = [
-  ['N4', 'N5'],   // B 위쪽 도로 포화
-  ['N10', 'N11'], // D-E 사이 도로 파괴
-];
-
-export const MINIATURE_CONGESTED_ROADS: RoadEdge[] = [
-  ['N8', 'N9'],   // 화재 인근 정체
-  ['N9', 'N12'],  // E구역 포장도로 파괴 영향
-];
