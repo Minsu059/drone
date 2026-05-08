@@ -1,0 +1,132 @@
+{
+  "version": 1,
+  "description": "A2 mock 분류기/카메라용 라벨 fixture. image 파일이 없으면 placeholder로 자동 대체. 미니어처 5종 + 확장 4종(화재/침수/산사태/정상).",
+  "items": [
+    {
+      "id": "mini_crack_001",
+      "path": "images/miniature/crack_001.jpg",
+      "scenario": "building_crack",
+      "source": "miniature",
+      "labels": {
+        "person_count": 0,
+        "collapse_rate": 25.0,
+        "road_status": "normal",
+        "fire_detected": false,
+        "fire_confidence": 0.01,
+        "disaster_type": "earthquake"
+      }
+    },
+    {
+      "id": "mini_collapse_001",
+      "path": "images/miniature/collapse_001.jpg",
+      "scenario": "building_collapse",
+      "source": "miniature",
+      "labels": {
+        "person_count": 2,
+        "collapse_rate": 78.0,
+        "road_status": "blocked",
+        "fire_detected": false,
+        "fire_confidence": 0.02,
+        "disaster_type": "earthquake"
+      }
+    },
+    {
+      "id": "mini_signage_001",
+      "path": "images/miniature/signage_down_001.jpg",
+      "scenario": "road_signage_down",
+      "source": "miniature",
+      "labels": {
+        "person_count": 0,
+        "collapse_rate": 5.0,
+        "road_status": "congested",
+        "fire_detected": false,
+        "fire_confidence": 0.0,
+        "disaster_type": "earthquake"
+      }
+    },
+    {
+      "id": "mini_road_collapse_001",
+      "path": "images/miniature/road_collapse_001.jpg",
+      "scenario": "road_collapse",
+      "source": "miniature",
+      "labels": {
+        "person_count": 0,
+        "collapse_rate": 0.0,
+        "road_status": "blocked",
+        "fire_detected": false,
+        "fire_confidence": 0.0,
+        "disaster_type": "earthquake"
+      }
+    },
+    {
+      "id": "mini_vehicle_001",
+      "path": "images/miniature/vehicle_saturated_001.jpg",
+      "scenario": "vehicle_saturated",
+      "source": "miniature",
+      "labels": {
+        "person_count": 0,
+        "collapse_rate": 0.0,
+        "road_status": "congested",
+        "fire_detected": false,
+        "fire_confidence": 0.0,
+        "disaster_type": "none"
+      }
+    },
+    {
+      "id": "ext_fire_001",
+      "path": "images/aihub/fire_001.jpg",
+      "scenario": "fire",
+      "source": "aihub_dataset",
+      "labels": {
+        "person_count": 1,
+        "collapse_rate": 15.0,
+        "road_status": "congested",
+        "fire_detected": true,
+        "fire_confidence": 0.92,
+        "disaster_type": "fire"
+      }
+    },
+    {
+      "id": "ext_flood_001",
+      "path": "images/aihub/flood_001.jpg",
+      "scenario": "flood",
+      "source": "aihub_dataset",
+      "labels": {
+        "person_count": 3,
+        "collapse_rate": 10.0,
+        "road_status": "blocked",
+        "fire_detected": false,
+        "fire_confidence": 0.0,
+        "disaster_type": "flood"
+      }
+    },
+    {
+      "id": "ext_landslide_001",
+      "path": "images/aihub/landslide_001.jpg",
+      "scenario": "landslide",
+      "source": "aihub_dataset",
+      "labels": {
+        "person_count": 0,
+        "collapse_rate": 80.0,
+        "road_status": "blocked",
+        "fire_detected": false,
+        "fire_confidence": 0.0,
+        "disaster_type": "landslide"
+      }
+    },
+    {
+      "id": "normal_001",
+      "path": "images/miniature/normal_001.jpg",
+      "scenario": "normal",
+      "source": "miniature",
+      "labels": {
+        "person_count": 0,
+        "collapse_rate": 0.0,
+        "road_status": "normal",
+        "fire_detected": false,
+        "fire_confidence": 0.0,
+        "disaster_type": "none"
+      }
+    }
+  ]
+}
