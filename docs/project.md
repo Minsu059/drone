@@ -51,7 +51,8 @@ def classify(image: np.ndarray) -> dict:
   "person_count": 3,
   "collapse_rate": 72.5,
   "road_status": "normal | congested | blocked",
-  "fire": {"detected": true, "confidence": 0.94},
+  "fire_detected": true,
+  "fire_confidence": 0.94,
   "disaster_type": "earthquake | flood | fire | landslide | none",
   "inference_ms": 120
 }
@@ -60,7 +61,7 @@ def classify(image: np.ndarray) -> dict:
 **추론 트리거 조건**
 - 매 프레임이 아닌 **N초 간격**(기본 3초)으로 추론
 - 또는 직전 프레임 대비 **유의미한 변화 감지 시** 추론 (배경 차분 등, 추후 결정)
-- `disaster_type != "none"` 또는 `fire.detected == true` 또는 `collapse_rate >= 임계값`인 경우에만 서버에 `disaster_report` 전송
+- `disaster_type != "none"` 또는 `fire_detected == true` 또는 `collapse_rate >= 임계값`인 경우에만 서버에 `disaster_report` 전송
 
 **카메라 입력 추상화**
 - `CameraSource` 인터페이스 (`read() -> np.ndarray`)
@@ -227,7 +228,7 @@ JSON 형식으로 전송한다. 이미지는 Base64 인코딩하여 JSON 내에 
 |------|------------|------|
 | 그리드 셀 크기 | 10m × 10m (미니어처) / 100m × 100m (실제) | 위험도 매핑 단위 |
 | 위험도 가중치 | 인명 0.4 / 붕괴 0.3 / 화재 0.2 / 도로 0.1 | 룰베이스 초기값, 튜닝 필요 |
-| disaster_report 트리거 | `fire.detected` or `collapse_rate >= 30` or `person_count >= 1` | Edge AI 모델 출력 안정화 후 조정 |
+| disaster_report 트리거 | `fire_detected` or `collapse_rate >= 30` or `person_count >= 1` | Edge AI 모델 출력 안정화 후 조정 |
 | position 전송 주기 | 2초 | 너무 잦으면 DB/대시보드 부담 |
 | 경로 그래프 데이터 | 직접 정의(NetworkX) | OSM 끌어오면 미니어처 좌표와 안 맞음 |
 | 미니어처 좌표 스케일 | 가짜 GPS 좌표(서울 시청 기준 오프셋) | 실제 좌표계 유지 → 대시보드 그대로 사용 |

@@ -75,7 +75,7 @@ class Classifier(ABC):
 
 미니어처 5개 구성요소 각각에 대해, mock이 뱉을 라벨과 B1 모델이 학습해야 할 라벨을 미리 박아둔다.
 
-| 미니어처 시나리오 | person_count | collapse_rate | road_status | fire.detected | disaster_type | 비고 |
+| 미니어처 시나리오 | person_count | collapse_rate | road_status | fire_detected | disaster_type | 비고 |
 |------------------|-------------|---------------|-------------|---------------|---------------|------|
 | **건물 크랙** (외벽 균열) | 0 | 15~40 | normal | false | earthquake | 경미한 지진 피해, 구조 우선순위 낮음 |
 | **건물 붕괴** (전/부분 붕괴) | 0~3 | 60~95 | normal/blocked | false | earthquake | 인명 피해 가능성 ↑, 구조 우선순위 최상 |
@@ -83,7 +83,7 @@ class Classifier(ABC):
 | **도로 붕괴** (싱크홀/도로 함몰) | 0 | 0 | blocked | false | earthquake | 우회 경로 필요 |
 | **차량 포화** (정체) | 0 | 0 | congested | false | none | 비-재난 상황, 경로 가중치만 영향 |
 
-> **확장 슬롯**: 화재(`fire.detected=true`), 침수(`disaster_type="flood"`), 산사태는 미니어처 미구현이므로
+> **확장 슬롯**: 화재(`fire_detected=true`), 침수(`disaster_type="flood"`), 산사태는 미니어처 미구현이므로
 > 데이터셋 발췌 이미지로만 fixture를 채워 mock에서 흘려본다.
 > 인명(`person_count > 0`)은 미니어처에 미니어처 인형 배치 가능 시 추가.
 
@@ -112,7 +112,8 @@ class Classifier(ABC):
         "person_count": 0,
         "collapse_rate": 78.0,
         "road_status": "blocked",
-        "fire": {"detected": false, "confidence": 0.02},
+        "fire_detected": false,
+        "fire_confidence": 0.02,
         "disaster_type": "earthquake"
       }
     },
@@ -125,7 +126,8 @@ class Classifier(ABC):
         "person_count": 0,
         "collapse_rate": 25.0,
         "road_status": "normal",
-        "fire": {"detected": false, "confidence": 0.01},
+        "fire_detected": false,
+        "fire_confidence": 0.01,
         "disaster_type": "earthquake"
       }
     }
