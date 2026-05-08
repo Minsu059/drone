@@ -1,142 +1,207 @@
-import { MapContainer, TileLayer, CircleMarker, Circle, Popup } from 'react-leaflet';
+import { useEffect, useRef } from 'react';
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  CircleMarker,
+  Circle,
+  Popup,
+  useMap,
+} from 'react-leaflet';
+import type L from 'leaflet';
 import {
   WIDE_VIEW,
   VIRTUAL_DRONES,
   VIRTUAL_DISASTERS,
-  VIRTUAL_ZONE_RISKS,
+  MINIATURE_ENTRY_POINT,
   type DisasterType,
+  type VirtualDisaster,
 } from '../data/mockData';
 import { riskScoreToColor } from '../utils/coords';
+import { computeRisk } from '../utils/risk';
+import { DRONE_ICON, DISASTER_ICONS } from '../utils/mapIcons';
 
 interface Props {
   onZoneClick: (zoneName: string) => void;
+  focusedDisasterId: string | null;
 }
 
-const DISASTER_COLOR: Record<DisasterType, string> = {
-  fire: '#dc2626',
-  flood: '#2563eb',
-  earthquake: '#a16207',
-  landslide: '#7c3aed',
+const DISASTER_LABEL: Record<DisasterType, string> = {
+  fire: '화재',
+  flood: '침수',
+  earthquake: '지진',
+  landslide: '산사태',
 };
 
-export function WideView({ onZoneClick }: Props) {
+function DisasterPopup({ d }: { d: VirtualDisaster }) {
+  const risk = computeRisk(d);
+  return (
+    <div className="popup">
+      <div className="popup-title">{d.description}</div>
+      <div className="popup-meta">
+        {DISASTER_LABEL[d.disaster_type]} · 영향반경 {d.impact_radius_m}m
+      </div>
+      <table className="risk-table">
+        <thead>
+          <tr>
+            <th>항목</th>
+            <th>값</th>
+            <th>점수</th>
+          </tr>
+        </thead>
+        <tbody>
+          {risk.items.map((it) => (
+            <tr key={it.label}>
+              <td>{it.label}</td>
+              <td>{it.raw}</td>
+              <td>
+                <b>{it.score}</b>
+                <span className="risk-max">/{it.max}</span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colSpan={2}>종합 위험도</td>
+            <td>
+              <b style={{ color: riskScoreToColor(risk.total) }}>
+                {risk.total}
+              </b>
+              <span className="risk-max">/100</span>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+}
+
+interface FocuserProps {
+  focusedId: string | null;
+  markerRefs: React.MutableRefObject<Map<string, L.Marker>>;
+}
+
+function MapFocuser({ focusedId, markerRefs }: FocuserProps) {
+  const map = useMap();
+  useEffect(() => {
+    if (!focusedId) return;
+    const d = VIRTUAL_DISASTERS.find((x) => x.id === focusedId);
+    if (!d) return;
+    const targetZoom = Math.max(map.getZoom(), 15);
+    map.flyTo([d.lat, d.lon], targetZoom, { duration: 0.6 });
+    const t = window.setTimeout(() => {
+      markerRefs.current.get(focusedId)?.openPopup();
+    }, 700);
+    return () => window.clearTimeout(t);
+  }, [focusedId, map, markerRefs]);
+  return null;
+}
+
+export function WideView({ onZoneClick, focusedDisasterId }: Props) {
+  const markerRefs = useRef<Map<string, L.Marker>>(new Map());
+
   return (
     <MapContainer
       center={WIDE_VIEW.center}
       zoom={WIDE_VIEW.zoom}
       style={{ width: '100%', height: '100%' }}
+      closePopupOnClick={false}
     >
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       />
 
-      {/* 구역별 위험도 히트맵 (행정구역 GeoJSON은 Phase 4에서 교체) */}
-      {VIRTUAL_ZONE_RISKS.map((zone) => {
-        const color = riskScoreToColor(zone.risk_score);
+      <MapFocuser focusedId={focusedDisasterId} markerRefs={markerRefs} />
+
+      {/* 재난 영향 반경 (위험도 색상) */}
+      {VIRTUAL_DISASTERS.map((d) => {
+        const risk = computeRisk(d);
+        const color = riskScoreToColor(risk.total);
         return (
           <Circle
-            key={zone.name}
-            center={zone.center}
-            radius={500}
+            key={`r-${d.id}`}
+            center={[d.lat, d.lon]}
+            radius={d.impact_radius_m}
             pathOptions={{
               color,
               fillColor: color,
-              fillOpacity: 0.25,
-              weight: zone.has_miniature ? 3 : 1,
-              dashArray: zone.has_miniature ? '6 4' : undefined,
+              fillOpacity: 0.18,
+              weight: 1.5,
+              dashArray: '4 3',
             }}
-            eventHandlers={{
-              click: () => {
-                if (zone.has_miniature) onZoneClick(zone.name);
-              },
-            }}
-          >
-            <Popup>
-              <div className="popup">
-                <strong>{zone.name}</strong>
-                <br />
-                위험도: <b>{zone.risk_score}</b> / 100
-                {zone.has_miniature && (
-                  <>
-                    <br />
-                    <button
-                      type="button"
-                      className="popup-btn"
-                      onClick={() => onZoneClick(zone.name)}
-                    >
-                      미니어처 뷰 열기 →
-                    </button>
-                  </>
-                )}
-              </div>
-            </Popup>
-          </Circle>
+            interactive={false}
+          />
         );
       })}
 
-      {/* 가상 드론 (회색) */}
-      {VIRTUAL_DRONES.map((d) => (
-        <CircleMarker
-          key={d.drone_id}
-          center={[d.lat, d.lon]}
-          radius={6}
-          pathOptions={{
-            color: '#374151',
-            fillColor: '#9ca3af',
-            fillOpacity: 0.9,
-            weight: 2,
+      {/* 재난 마커 (유형별 아이콘) */}
+      {VIRTUAL_DISASTERS.map((d) => (
+        <Marker
+          key={d.id}
+          position={[d.lat, d.lon]}
+          icon={DISASTER_ICONS[d.disaster_type]}
+          ref={(el) => {
+            if (el) markerRefs.current.set(d.id, el);
+            else markerRefs.current.delete(d.id);
           }}
         >
-          <Popup>
+          <Popup
+            maxWidth={320}
+            autoClose={false}
+            closeOnClick={false}
+          >
+            <DisasterPopup d={d} />
+          </Popup>
+        </Marker>
+      ))}
+
+      {/* 가상 드론 (드론 아이콘) */}
+      {VIRTUAL_DRONES.map((d) => (
+        <Marker
+          key={d.drone_id}
+          position={[d.lat, d.lon]}
+          icon={DRONE_ICON}
+        >
+          <Popup autoClose={false} closeOnClick={false}>
             <div className="popup">
-              <strong>{d.drone_id}</strong>
-              <br />
-              순찰: {d.area}
-              <br />
+              <div className="popup-title">{d.drone_id}</div>
+              <div className="popup-meta">순찰: {d.area}</div>
               <span className="tag tag-virtual">virtual</span>
             </div>
           </Popup>
-        </CircleMarker>
+        </Marker>
       ))}
 
-      {/* 가상 재난 */}
-      {VIRTUAL_DISASTERS.map((dis) => {
-        const color = DISASTER_COLOR[dis.disaster_type];
-        return (
-          <CircleMarker
-            key={dis.id}
-            center={[dis.lat, dis.lon]}
-            radius={10}
-            pathOptions={{
-              color,
-              fillColor: color,
-              fillOpacity: 0.7,
-              weight: 2,
-            }}
-          >
-            <Popup>
-              <div className="popup">
-                <strong>{dis.description}</strong>
-                <br />
-                유형: {dis.disaster_type}
-                <br />
-                인명: <b>{dis.person_count}</b>명
-                <br />
-                붕괴율: <b>{dis.collapse_rate}</b>%
-                <br />
-                도로: {dis.road_status}
-                {dis.fire_detected && (
-                  <>
-                    <br />
-                    화재 확신도: {(dis.fire_confidence * 100).toFixed(0)}%
-                  </>
-                )}
-              </div>
-            </Popup>
-          </CircleMarker>
-        );
-      })}
+      {/* 미니어처 진입 마커 (시연 장소 강조용 — 의도적으로 원형 유지) */}
+      <CircleMarker
+        center={MINIATURE_ENTRY_POINT.center}
+        radius={11}
+        pathOptions={{
+          color: '#0ea5e9',
+          fillColor: '#38bdf8',
+          fillOpacity: 0.9,
+          weight: 3,
+        }}
+        eventHandlers={{
+          click: () => onZoneClick(MINIATURE_ENTRY_POINT.name),
+        }}
+      >
+        <Popup autoClose={false} closeOnClick={false}>
+          <div className="popup">
+            <div className="popup-title">{MINIATURE_ENTRY_POINT.name}</div>
+            <div className="popup-meta">미니어처 시연 장소</div>
+            <button
+              type="button"
+              className="popup-btn"
+              onClick={() => onZoneClick(MINIATURE_ENTRY_POINT.name)}
+            >
+              미니어처 뷰 열기 →
+            </button>
+          </div>
+        </Popup>
+      </CircleMarker>
     </MapContainer>
   );
 }

@@ -2,9 +2,17 @@ import { useState } from 'react';
 import 'leaflet/dist/leaflet.css';
 import { WideView } from './components/WideView';
 import { MiniatureModal } from './components/MiniatureModal';
+import { DisasterSidebar } from './components/DisasterSidebar';
+import { VIRTUAL_DISASTERS } from './data/mockData';
 
 export default function App() {
   const [miniatureZone, setMiniatureZone] = useState<string | null>(null);
+  const [focusedDisasterId, setFocusedDisasterId] = useState<string | null>(null);
+
+  const handleSelectDisaster = (id: string) => {
+    // 같은 항목 다시 클릭하면 focus 해제 (선택 토글)
+    setFocusedDisasterId((prev) => (prev === id ? null : id));
+  };
 
   return (
     <div className="app">
@@ -21,8 +29,18 @@ export default function App() {
           <span className="legend-item"><i className="dot dot-slide" /> 산사태</span>
         </div>
       </header>
-      <main className="app-map">
-        <WideView onZoneClick={(zone) => setMiniatureZone(zone)} />
+      <main className="app-body">
+        <div className="app-map">
+          <WideView
+            onZoneClick={(zone) => setMiniatureZone(zone)}
+            focusedDisasterId={focusedDisasterId}
+          />
+        </div>
+        <DisasterSidebar
+          disasters={VIRTUAL_DISASTERS}
+          focusedId={focusedDisasterId}
+          onSelect={handleSelectDisaster}
+        />
       </main>
       <footer className="app-footer">
         © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors

@@ -96,10 +96,133 @@ a { color: var(--accent); }
 .dot-quake   { background: #a16207; }
 .dot-slide   { background: #7c3aed; }
 
+.app-body {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  min-height: 0;
+}
+
 .app-map {
   flex: 1;
+  min-width: 0;
   min-height: 0;
   position: relative;
+}
+
+/* ============================================================
+   Right sidebar — 재난 목록
+   ============================================================ */
+
+.sidebar {
+  width: 320px;
+  flex-shrink: 0;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 14px 16px 4px;
+}
+.sidebar-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+  letter-spacing: -0.1px;
+}
+.sidebar-count {
+  font-size: 12px;
+  color: var(--text-mute);
+  font-variant-numeric: tabular-nums;
+}
+.sidebar-hint {
+  padding: 0 16px 10px;
+  font-size: 11px;
+  color: var(--text-mute);
+  border-bottom: 1px solid var(--border);
+}
+
+.disaster-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.disaster-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #1f2937;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.disaster-item:hover {
+  background: rgba(56, 189, 248, 0.06);
+}
+.disaster-item.active {
+  background: rgba(14, 165, 233, 0.18);
+  border-left: 3px solid var(--accent-strong);
+  padding-left: 11px;
+}
+
+.disaster-icon-wrap {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid #0f172a;
+  box-shadow: 0 0 0 1px #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #fff;
+}
+
+.disaster-main {
+  flex: 1;
+  min-width: 0;
+}
+.disaster-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+.disaster-meta {
+  font-size: 11px;
+  color: var(--text-mute);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.disaster-score {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.score-num {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+.score-max {
+  font-size: 10px;
+  color: var(--text-mute);
+  margin-left: 1px;
 }
 
 .app-footer {
@@ -133,6 +256,18 @@ a { color: var(--accent); }
 
 .popup strong { color: #f1f5f9; }
 
+.popup-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: #f1f5f9;
+  margin-bottom: 2px;
+}
+.popup-meta {
+  font-size: 11px;
+  color: var(--text-mute);
+  margin-bottom: 8px;
+}
+
 .popup-btn {
   margin-top: 8px;
   padding: 5px 10px;
@@ -144,6 +279,44 @@ a { color: var(--accent); }
   font-weight: 600;
 }
 .popup-btn:hover { background: var(--accent); }
+
+/* 위험도 breakdown 표 (광역 popup) */
+.risk-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  margin-top: 4px;
+}
+.risk-table th,
+.risk-table td {
+  padding: 4px 6px;
+  text-align: left;
+  border-bottom: 1px solid #1f2937;
+}
+.risk-table th {
+  font-weight: 600;
+  color: var(--text-mute);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.risk-table td:last-child,
+.risk-table th:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.risk-table tfoot td {
+  border-top: 1px solid #334155;
+  border-bottom: none;
+  padding-top: 6px;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+.risk-max {
+  color: var(--text-mute);
+  font-weight: 400;
+  margin-left: 1px;
+}
 
 .tag {
   display: inline-block;
@@ -161,6 +334,39 @@ a { color: var(--accent); }
   color: var(--text-mute) !important;
 }
 .leaflet-control-attribution a { color: var(--accent) !important; }
+
+/* ============================================================
+   Map markers (Leaflet divIcon 기반 — 드론·재난 아이콘 배지)
+   ============================================================ */
+
+/* divIcon 기본 흰 박스 무력화 */
+.map-marker-wrap {
+  background: transparent !important;
+  border: none !important;
+}
+
+.map-marker {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  color: #fff;
+  transition: transform 0.12s;
+}
+.map-marker:hover {
+  transform: scale(1.12);
+  cursor: pointer;
+}
+.map-marker svg { display: block; }
+
+/* 드론은 회색 배지 */
+.map-marker-drone {
+  background: #475569;
+}
 
 /* ============================================================
    Miniature modal — 풀스크린 오버레이
@@ -233,4 +439,64 @@ a { color: var(--accent); }
   flex: 1;
   min-height: 0;
   position: relative;
+}
+
+/* ============================================================
+   Miniature canvas (SVG, 지도 X) — 미니어처 사진 placeholder
+   ============================================================ */
+
+.miniature-canvas {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: #0b1220;
+  overflow: hidden;
+}
+
+.miniature-bg-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #475569;
+  font-size: 13px;
+  letter-spacing: 0.3px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.miniature-svg {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* SVG 안 텍스트/요소 */
+.miniature-svg .zone-label {
+  fill: #60a5fa;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.miniature-svg .building-label {
+  fill: #0f172a;
+  font-size: 12px;
+  font-weight: 700;
+  pointer-events: none;
+}
+.miniature-svg .building rect:hover {
+  filter: brightness(1.2);
+  cursor: help;
+}
+.miniature-svg .legend-title {
+  fill: #f1f5f9;
+  font-size: 13px;
+  font-weight: 700;
+}
+.miniature-svg .legend-text {
+  fill: #cbd5e1;
+  font-size: 11px;
 }

@@ -26,7 +26,6 @@ export const VIRTUAL_DRONES: VirtualDrone[] = [
   { drone_id: 'drone-v2', area: '덕양구 행신동', lat: 37.6120, lon: 126.8510 },
   { drone_id: 'drone-v3', area: '은평구 진관동', lat: 37.6350, lon: 126.9150 },
   { drone_id: 'drone-v4', area: '고양시 삼송동', lat: 37.6420, lon: 126.8900 },
-  { drone_id: 'drone-v5', area: '파주시 운정', lat: 37.7130, lon: 126.7650 },
 ];
 
 export type DisasterType = 'fire' | 'flood' | 'earthquake' | 'landslide';
@@ -43,6 +42,8 @@ export interface VirtualDisaster {
   fire_detected: boolean;
   fire_confidence: number;
   road_status: RoadStatus;
+  /** 재난 영향 반경 (m). 광역 뷰 위험도 원 크기. */
+  impact_radius_m: number;
 }
 
 export const VIRTUAL_DISASTERS: VirtualDisaster[] = [
@@ -56,6 +57,7 @@ export const VIRTUAL_DISASTERS: VirtualDisaster[] = [
     fire_detected: true,
     fire_confidence: 0.92,
     road_status: 'congested',
+    impact_radius_m: 150,
   },
   {
     id: 'vd-2',
@@ -67,6 +69,7 @@ export const VIRTUAL_DISASTERS: VirtualDisaster[] = [
     fire_detected: false,
     fire_confidence: 0.0,
     road_status: 'blocked',
+    impact_radius_m: 300,
   },
   {
     id: 'vd-3',
@@ -78,17 +81,67 @@ export const VIRTUAL_DISASTERS: VirtualDisaster[] = [
     fire_detected: false,
     fire_confidence: 0.0,
     road_status: 'congested',
+    impact_radius_m: 200,
   },
   {
     id: 'vd-4',
-    lat: 37.7140, lon: 126.7660,
-    disaster_type: 'landslide',
-    description: '운정 산사태',
-    person_count: 3,
-    collapse_rate: 80.0,
+    lat: 37.6080, lon: 126.8390,
+    disaster_type: 'fire',
+    description: '행신동 가스누출 화재',
+    person_count: 6,
+    collapse_rate: 20.0,
+    fire_detected: true,
+    fire_confidence: 0.85,
+    road_status: 'normal',
+    impact_radius_m: 130,
+  },
+  {
+    id: 'vd-5',
+    lat: 37.5870, lon: 126.8820,
+    disaster_type: 'flood',
+    description: '화전동 도로 침수',
+    person_count: 4,
+    collapse_rate: 5.0,
     fire_detected: false,
     fire_confidence: 0.0,
     road_status: 'blocked',
+    impact_radius_m: 250,
+  },
+  {
+    id: 'vd-6',
+    lat: 37.6125, lon: 126.8175,
+    disaster_type: 'earthquake',
+    description: '능곡역 인근 건물 붕괴',
+    person_count: 9,
+    collapse_rate: 75.0,
+    fire_detected: false,
+    fire_confidence: 0.0,
+    road_status: 'congested',
+    impact_radius_m: 180,
+  },
+  {
+    id: 'vd-7',
+    lat: 37.6180, lon: 126.8910,
+    disaster_type: 'fire',
+    description: '향동 빌라 화재',
+    person_count: 3,
+    collapse_rate: 40.0,
+    fire_detected: true,
+    fire_confidence: 0.78,
+    road_status: 'normal',
+    impact_radius_m: 120,
+  },
+  {
+    id: 'vd-8',
+    lat: 37.6033, lon: 126.8260,
+    disaster_type: 'landslide',
+    description: '행주산성 산사태',
+    person_count: 2,
+    collapse_rate: 70.0,
+    fire_detected: false,
+    fire_confidence: 0.0,
+    road_status: 'blocked',
+    impact_radius_m: 220,
   },
 ];
 
@@ -99,14 +152,17 @@ export interface ZoneRisk {
   has_miniature?: boolean;
 }
 
-export const VIRTUAL_ZONE_RISKS: ZoneRisk[] = [
-  { name: '화정동',     center: [37.6150, 126.8330], risk_score: 72 },
-  { name: '행신동',     center: [37.6120, 126.8510], risk_score: 25 },
-  { name: '진관동',     center: [37.6350, 126.9160], risk_score: 58 },
-  { name: '삼송동',     center: [37.6430, 126.8910], risk_score: 81 },
-  { name: '운정',       center: [37.7140, 126.7660], risk_score: 90 },
-  { name: '한국항공대', center: [37.6000, 126.8645], risk_score: 45, has_miniature: true },
-];
+/**
+ * 미니어처 드릴다운 진입점. 위험도 원/히트맵 용도가 아니라
+ * "여기 클릭 → 미니어처 모달" 트리거 마커로만 사용.
+ * 광역 위험도는 각 재난 marker의 영향 반경(impact_radius_m)으로 대체.
+ */
+export const MINIATURE_ENTRY_POINT: ZoneRisk = {
+  name: '한국항공대',
+  center: [37.6000, 126.8645],
+  risk_score: 45,
+  has_miniature: true,
+};
 
 // ============================================================
 // 미니어처 뷰 — 한국항공대 캠퍼스
