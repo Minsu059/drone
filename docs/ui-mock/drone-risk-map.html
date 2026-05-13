@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Drone Risk Map</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          Inter, Pretendard, "Noto Sans KR", system-ui, -apple-system,
+          BlinkMacSystemFont, sans-serif;
+        background: #081015;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(circle at 30% 25%, rgba(45, 141, 124, 0.16), transparent 34%),
+          linear-gradient(145deg, #071116, #0a151b 58%, #061014);
+      }
+
+      .screen {
+        width: min(1180px, calc(100vw - 32px));
+        aspect-ratio: 16 / 9;
+        border: 1px solid rgba(132, 222, 205, 0.22);
+        background: #0a141a;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.46);
+        overflow: hidden;
+      }
+
+      svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      .grid-line {
+        stroke: rgba(143, 199, 190, 0.1);
+        stroke-width: 1;
+      }
+
+      .road {
+        fill: #18201f;
+        stroke: none;
+      }
+
+      .road-inner {
+        stroke: rgba(235, 247, 232, 0.14);
+        stroke-width: 1.2;
+        stroke-linecap: square;
+      }
+
+      .section-fill {
+        opacity: 0.32;
+      }
+
+      .section-border {
+        fill: none;
+        stroke-width: 3;
+        stroke-dasharray: 12 8;
+      }
+
+      .building {
+        fill: rgba(30, 95, 153, 0.64);
+        stroke: #1e9bff;
+        stroke-width: 2;
+        filter: drop-shadow(0 0 8px rgba(30, 155, 255, 0.35));
+      }
+
+      .building-text {
+        fill: #e8f6ff;
+        font-size: 15px;
+        font-weight: 700;
+        text-anchor: middle;
+        paint-order: stroke;
+        stroke: rgba(4, 13, 18, 0.82);
+        stroke-width: 4px;
+      }
+
+      .section-label {
+        fill: #f6f9e8;
+        font-size: 20px;
+        font-weight: 800;
+        paint-order: stroke;
+        stroke: rgba(0, 0, 0, 0.72);
+        stroke-width: 5px;
+      }
+
+      .incident-label {
+        fill: #fff4e8;
+        font-size: 16px;
+        font-weight: 800;
+        paint-order: stroke;
+        stroke: rgba(13, 16, 12, 0.78);
+        stroke-width: 5px;
+      }
+
+      .incident-card {
+        fill: rgba(24, 24, 20, 0.9);
+        stroke: #ff614c;
+        stroke-width: 2;
+      }
+
+      .rubble {
+        fill: #8f4b31;
+        stroke: #ff775f;
+        stroke-width: 2;
+      }
+
+      .traffic-car {
+        fill: #e8edf1;
+        stroke: #ffc247;
+        stroke-width: 2;
+      }
+
+      .traffic-light {
+        fill: #ff4b36;
+      }
+
+      .fallen-tree-trunk {
+        stroke: #8b5a32;
+        stroke-width: 9;
+        stroke-linecap: round;
+      }
+
+      .fallen-tree-branch {
+        stroke: #a8733d;
+        stroke-width: 4;
+        stroke-linecap: round;
+      }
+
+      .fallen-tree-canopy {
+        fill: rgba(58, 139, 67, 0.92);
+        stroke: #8ff08d;
+        stroke-width: 1.5;
+      }
+
+      .fallen-tree-shadow {
+        fill: rgba(4, 9, 8, 0.28);
+      }
+
+      .drone-ring {
+        fill: none;
+        stroke: rgba(139, 255, 94, 0.58);
+        stroke-width: 2;
+      }
+
+      .drone {
+        fill: #f4fff4;
+        stroke: #9cff79;
+        stroke-width: 2;
+      }
+
+      .legend {
+        fill: rgba(7, 18, 24, 0.84);
+        stroke: rgba(152, 224, 208, 0.2);
+        stroke-width: 1;
+      }
+
+      .legend-title {
+        fill: #e9fff9;
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      .legend-text {
+        fill: #cde2df;
+        font-size: 12px;
+        font-weight: 650;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="screen" aria-label="드론 기반 지진 위험도 매핑 UI">
+      <svg id="riskMap" viewBox="0 0 1200 675" role="img">
+        <defs>
+          <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+            <path class="grid-line" d="M 30 0 L 0 0 0 30" fill="none" />
+          </pattern>
+        </defs>
+
+        <rect width="1200" height="675" fill="#07131a" />
+        <rect width="1200" height="675" fill="url(#grid)" />
+        <g id="sectionFills"></g>
+
+        <g id="roads">
+          <g aria-label="road surface">
+            <rect class="road" x="28" y="185" width="1144" height="46" />
+            <rect class="road" x="28" y="416" width="1144" height="46" />
+            <rect class="road" x="250" y="185" width="64" height="277" />
+            <rect class="road" x="515" y="416" width="64" height="231" />
+            <rect class="road" x="662" y="185" width="64" height="462" />
+          </g>
+
+          <g aria-label="road guide lines">
+            <line class="road-inner" x1="28" y1="208" x2="1172" y2="208" />
+            <line class="road-inner" x1="28" y1="439" x2="1172" y2="439" />
+            <line class="road-inner" x1="282" y1="185" x2="282" y2="462" />
+            <line class="road-inner" x1="547" y1="416" x2="547" y2="647" />
+            <line class="road-inner" x1="694" y1="185" x2="694" y2="647" />
+          </g>
+        </g>
+
+        <g id="buildings"></g>
+        <g id="sectionBorders"></g>
+        <g id="incidents"></g>
+
+        <g aria-label="drone marker">
+          <circle class="drone-ring" cx="604" cy="238" r="48" />
+          <circle class="drone-ring" cx="604" cy="238" r="27" />
+          <path class="drone" d="M604 225l10 10h18v8h-18l-10 10-10-10h-18v-8h18z" />
+          <circle class="drone" cx="576" cy="235" r="5" />
+          <circle class="drone" cx="632" cy="235" r="5" />
+          <circle class="drone" cx="576" cy="243" r="5" />
+          <circle class="drone" cx="632" cy="243" r="5" />
+        </g>
+
+        <g id="legend" transform="translate(970 35)">
+          <rect class="legend" width="200" height="150" rx="8" />
+          <text class="legend-title" x="16" y="28">섹션 위험도</text>
+          <g id="legendRows"></g>
+          <text class="legend-text" x="16" y="132">건물: 붕괴확률 %</text>
+        </g>
+      </svg>
+    </main>
+
+    <script>
+      let mapState = {
+        sections: {
+          A: { riskLevel: 4 },
+          B: { riskLevel: 3 },
+          C: { riskLevel: 2 },
+          D: { riskLevel: 1 },
+          E: { riskLevel: 2 },
+        },
+        buildings: {
+          topLeft: { collapseProbability: 38 },
+          topRight: { collapseProbability: 31 },
+          center: { collapseProbability: 56 },
+          rightMiddle: { collapseProbability: 27 },
+          bottomLeft: { collapseProbability: 14 },
+          bottomRight: { collapseProbability: 22 },
+        },
+        roadIncidents: [
+          { id: "traffic-1", type: "traffic", x: 850, y: 208 },
+          { id: "tree-1", type: "fallenTree", x: 1010, y: 439 },
+          { id: "rubble-1", type: "rubble", x: 548, y: 538, labelX: 592, labelY: 518 },
+        ],
+      };
+
+      const riskStyles = {
+        1: { label: "낮음", color: "#24d36b" },
+        2: { label: "주의", color: "#ffd63d" },
+        3: { label: "높음", color: "#ff942d" },
+        4: { label: "매우 높음", color: "#ff3b30" },
+      };
+
+      const sectionShapes = {
+        A: "228,46 950,46 950,176 228,176",
+        B: "376,245 644,245 644,410 376,410",
+        C: "798,261 1126,261 1126,410 798,410",
+        D: "148,486 438,486 438,618 148,618",
+        E: "740,486 1080,486 1080,618 740,618",
+      };
+
+      const sectionLabelPositions = {
+        A: [244, 75],
+        B: [392, 274],
+        C: [814, 290],
+        D: [164, 515],
+        E: [756, 515],
+      };
+
+      const buildingShapes = [
+        { id: "topLeft", x: 250, y: 70, width: 280, height: 88, name: "건물" },
+        { id: "topRight", x: 658, y: 70, width: 270, height: 88, name: "건물" },
+        { id: "center", x: 400, y: 268, width: 220, height: 126, name: "건물" },
+        { id: "rightMiddle", x: 820, y: 284, width: 284, height: 112, name: "건물" },
+        { id: "bottomLeft", x: 168, y: 506, width: 250, height: 92, name: "건물" },
+        { id: "bottomRight", x: 760, y: 506, width: 300, height: 92, name: "건물" },
+      ];
+
+      const roadIncidentTypes = {
+        traffic: {
+          label: "차량혼잡",
+          cardWidth: 124,
+          cardFill: "rgba(83, 56, 14, 0.92)",
+          cardStroke: "#ffc247",
+        },
+        fallenTree: {
+          label: "나무 쓰러짐",
+          cardWidth: 148,
+          cardFill: "rgba(20, 74, 40, 0.92)",
+          cardStroke: "#4de46e",
+        },
+        rubble: {
+          label: "건물 잔해",
+          cardWidth: 128,
+          cardFill: "rgba(96, 28, 21, 0.92)",
+          cardStroke: "#ff614c",
+        },
+      };
+
+      function svgElement(tag, attrs = {}) {
+        const element = document.createElementNS("http://www.w3.org/2000/svg", tag);
+        Object.entries(attrs).forEach(([key, value]) => element.setAttribute(key, value));
+        return element;
+      }
+
+      function renderSections(state) {
+        const fillGroup = document.querySelector("#sectionFills");
+        const borderGroup = document.querySelector("#sectionBorders");
+        fillGroup.replaceChildren();
+        borderGroup.replaceChildren();
+
+        Object.entries(sectionShapes).forEach(([sectionId, points]) => {
+          const level = state.sections[sectionId]?.riskLevel ?? 1;
+          const style = riskStyles[level] ?? riskStyles[1];
+
+          fillGroup.appendChild(
+            svgElement("polygon", {
+              class: "section-fill",
+              points,
+              fill: style.color,
+            }),
+          );
+
+          borderGroup.appendChild(
+            svgElement("polygon", {
+              class: "section-border",
+              points,
+              stroke: style.color,
+            }),
+          );
+
+          const [x, y] = sectionLabelPositions[sectionId];
+          const label = svgElement("text", {
+            class: "section-label",
+            x,
+            y,
+          });
+          label.textContent = `${sectionId} 위험도 ${level}`;
+          borderGroup.appendChild(label);
+        });
+      }
+
+      function renderBuildings(state) {
+        const group = document.querySelector("#buildings");
+        group.replaceChildren();
+
+        buildingShapes.forEach((building) => {
+          group.appendChild(
+            svgElement("rect", {
+              class: "building",
+              x: building.x,
+              y: building.y,
+              width: building.width,
+              height: building.height,
+            }),
+          );
+
+          const title = svgElement("text", {
+            class: "building-text",
+            x: building.x + building.width / 2,
+            y: building.y + building.height / 2 - 8,
+          });
+          title.textContent = building.name;
+          group.appendChild(title);
+
+          const probability = state.buildings[building.id]?.collapseProbability ?? 0;
+          const value = svgElement("text", {
+            class: "building-text",
+            x: building.x + building.width / 2,
+            y: building.y + building.height / 2 + 20,
+          });
+          value.textContent = `붕괴확률 ${probability}%`;
+          group.appendChild(value);
+        });
+      }
+
+      function renderIncidentCard(group, incident, config) {
+        const cardX = incident.labelX ?? incident.x + 24;
+        const cardY = incident.labelY ?? incident.y - 19;
+
+        group.appendChild(
+          svgElement("rect", {
+            class: "incident-card",
+            x: cardX,
+            y: cardY,
+            width: incident.cardWidth ?? config.cardWidth,
+            height: 38,
+            rx: 6,
+            style: `fill: ${config.cardFill}; stroke: ${config.cardStroke};`,
+          }),
+        );
+
+        const label = svgElement("text", {
+          class: "incident-label",
+          x: cardX + 20,
+          y: cardY + 25,
+        });
+        label.textContent = incident.label ?? config.label;
+        group.appendChild(label);
+      }
+
+      function renderRubbleIcon(group, x, y) {
+        group.appendChild(svgElement("polygon", { class: "rubble", points: `${x - 34},${y - 10} ${x - 16},${y - 25} ${x + 4},${y - 8} ${x - 3},${y + 14} ${x - 26},${y + 12}` }));
+        group.appendChild(svgElement("polygon", { class: "rubble", points: `${x + 6},${y - 18} ${x + 24},${y - 30} ${x + 42},${y - 12} ${x + 34},${y + 8} ${x + 12},${y + 5}` }));
+        group.appendChild(svgElement("polygon", { class: "rubble", points: `${x - 2},${y + 20} ${x + 20},${y + 5} ${x + 38},${y + 23} ${x + 28},${y + 44} ${x + 4},${y + 38}` }));
+      }
+
+      function renderTrafficIcon(group, x, y) {
+        [-28, 0, 28].forEach((offset, index) => {
+          group.appendChild(
+            svgElement("rect", {
+              class: "traffic-car",
+              x: x + offset - 13,
+              y: y - 10 + (index % 2) * 5,
+              width: 26,
+              height: 16,
+              rx: 4,
+            }),
+          );
+        });
+        group.appendChild(svgElement("circle", { class: "traffic-light", cx: x + 48, cy: y - 8, r: 5 }));
+        group.appendChild(svgElement("circle", { class: "traffic-light", cx: x + 48, cy: y + 8, r: 5 }));
+      }
+
+      function renderFallenTreeIcon(group, x, y) {
+        group.appendChild(svgElement("ellipse", { class: "fallen-tree-shadow", cx: x, cy: y + 12, rx: 64, ry: 13 }));
+        group.appendChild(svgElement("line", { class: "fallen-tree-trunk", x1: x - 45, y1: y + 15, x2: x + 38, y2: y - 13 }));
+        group.appendChild(svgElement("line", { class: "fallen-tree-branch", x1: x - 10, y1: y + 3, x2: x - 30, y2: y - 16 }));
+        group.appendChild(svgElement("line", { class: "fallen-tree-branch", x1: x + 10, y1: y - 4, x2: x + 2, y2: y - 27 }));
+        group.appendChild(svgElement("line", { class: "fallen-tree-branch", x1: x + 22, y1: y - 8, x2: x + 49, y2: y - 25 }));
+        group.appendChild(svgElement("polygon", { class: "fallen-tree-canopy", points: `${x - 58},${y + 19} ${x - 42},${y - 6} ${x - 16},${y + 4} ${x - 28},${y + 29}` }));
+        group.appendChild(svgElement("polygon", { class: "fallen-tree-canopy", points: `${x - 26},${y + 8} ${x - 8},${y - 22} ${x + 18},${y - 9} ${x + 8},${y + 20}` }));
+        group.appendChild(svgElement("polygon", { class: "fallen-tree-canopy", points: `${x + 10},${y - 2} ${x + 36},${y - 34} ${x + 62},${y - 14} ${x + 45},${y + 12}` }));
+      }
+
+      function renderIncidents(state) {
+        const group = document.querySelector("#incidents");
+        group.replaceChildren();
+
+        (state.roadIncidents ?? []).forEach((incident) => {
+          const config = roadIncidentTypes[incident.type] ?? roadIncidentTypes.rubble;
+
+          if (incident.type === "traffic") {
+            renderTrafficIcon(group, incident.x, incident.y);
+          } else if (incident.type === "fallenTree") {
+            renderFallenTreeIcon(group, incident.x, incident.y);
+          } else {
+            renderRubbleIcon(group, incident.x, incident.y);
+          }
+
+          renderIncidentCard(group, incident, config);
+        });
+      }
+
+      function renderLegend() {
+        const group = document.querySelector("#legendRows");
+        group.replaceChildren();
+
+        Object.entries(riskStyles).forEach(([level, style], index) => {
+          const y = 48 + index * 20;
+          group.appendChild(svgElement("rect", { x: 16, y: y - 10, width: 12, height: 12, rx: 2, fill: style.color }));
+
+          const text = svgElement("text", { class: "legend-text", x: 38, y });
+          text.textContent = `위험도 ${level} · ${style.label}`;
+          group.appendChild(text);
+        });
+      }
+
+      function renderRiskMap(state) {
+        renderSections(state);
+        renderBuildings(state);
+        renderIncidents(state);
+        renderLegend();
+      }
+
+      renderRiskMap(mapState);
+
+      window.updateRiskMap = function updateRiskMap(nextState = {}) {
+        mapState = {
+          sections: { ...mapState.sections, ...(nextState.sections ?? {}) },
+          buildings: { ...mapState.buildings, ...(nextState.buildings ?? {}) },
+          roadIncidents: nextState.roadIncidents ?? mapState.roadIncidents,
+        };
+
+        renderRiskMap(mapState);
+      };
+    </script>
+  </body>
+</html>

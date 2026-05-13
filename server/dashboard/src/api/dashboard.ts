@@ -54,3 +54,71 @@ export function fetchWideDashboard(): Promise<WideDashboardResponse> {
 export function fetchMiniatureDashboard(): Promise<MiniatureDashboardResponse> {
   return getJSON<MiniatureDashboardResponse>('/api/dashboard/miniature');
 }
+
+// ============================================================
+// 미니어처 view_slot (누적 SVG 상태 + 수동 슬롯 전환)
+// 백엔드 server/view_slot.py 와 1:1 매칭
+// ============================================================
+
+export type SlotKind = 'building' | 'road';
+export type IncidentType = 'fallenTree' | 'traffic' | 'rubble';
+export type BuildingId =
+  | 'topLeft' | 'topRight' | 'center'
+  | 'rightMiddle' | 'bottomLeft' | 'bottomRight';
+
+export interface SlotMeta {
+  slot_id: string;
+  label: string;
+  kind: SlotKind;
+}
+
+export interface SlotsListResponse {
+  slots: SlotMeta[];
+  active_slot_id: string;
+}
+
+export interface RoadIncident {
+  id: string;
+  type: IncidentType;
+  x: number;
+  y: number;
+  labelX?: number;
+  labelY?: number;
+  intensity: number;
+}
+
+export interface RiskMapState {
+  active_slot_id: string;
+  sections: Record<string, { riskLevel: 1 | 2 | 3 | 4; score: number }>;
+  buildings: Record<string, { collapseProbability: number }>;
+  road_incidents: RoadIncident[];
+  drone: { x: number; y: number };
+}
+
+async function postJSON<T>(url: string, body?: unknown): Promise<T> {
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!r.ok) {
+    throw new Error(`${url} → ${r.status} ${r.statusText}`);
+  }
+  return (await r.json()) as T;
+}
+
+export function fetchSlotList(): Promise<SlotsListResponse> {
+  return getJSON<SlotsListResponse>('/api/view-slot/slots');
+}
+
+export function fetchRiskMapState(): Promise<RiskMapState> {
+  return getJSON<RiskMapState>('/api/view-slot/state');
+}
+
+export function setActiveSlot(slotId: string): Promise<RiskMapState> {
+  return postJSON<RiskMapState>('/api/view-slot', { slot_id: slotId });
+}
+
+export function resetRiskMap(): Promise<RiskMapState> {
+  return postJSON<RiskMapState>('/api/view-slot/reset');
+}

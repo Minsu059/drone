@@ -261,6 +261,51 @@ python server/scripts/filter_public_data.py all
 
 ---
 
+## 미니어처 위험도 맵 (view_slot)
+
+대시보드 미니어처 모달은 카메라 시점 슬롯 **9개**(건물 6 + 도로 3)로 운영된다.
+
+### 운영 모델
+
+- 활성 슬롯 1개. 운영자가 카메라를 미니어처 위 해당 시점으로 옮긴 뒤,
+  대시보드 우측 패널의 슬롯 버튼을 클릭하여 전환.
+- 라즈베리파이가 `/api/detections` 로 YOLO detection rows를 송신하면
+  서버가 현재 활성 슬롯으로 태깅하고 누적 갱신 (max 정책).
+- 시연 도중 한번 떠오른 위험 표시는 사라지지 않음. **리셋** 버튼으로 초기화.
+
+### 슬롯 종류
+
+- **건물 붕괴 6슬롯** — 좌상 / 우상 / 중앙 / 중우 / 좌하 / 우하 (`earthquake_building_level0/2` 매칭)
+- **도로 incident 3슬롯** — 나무 쓰러짐 (`typhoon_tree_*`) / 도로 혼잡 (`traffic_congestion_*`) / 건물 잔해 (`road_collapse_*`, `rock`)
+
+상세 좌표·매핑 룰: [docs/dashboard.md](docs/dashboard.md) §`MINIATURE_VIEW_SLOTS`
+SVG 디자인 레퍼런스: [docs/ui-mock/drone-risk-map.html](docs/ui-mock/drone-risk-map.html)
+
+### 수동 테스트
+
+```bash
+# 현재 슬롯/누적 상태 조회
+curl http://localhost:8000/api/view-slot/state
+
+# 슬롯 전환
+curl -X POST http://localhost:8000/api/view-slot \
+  -H "Content-Type: application/json" \
+  -d '{"slot_id":"b_center"}'
+
+# detection 송신 → 1초 이내 미니어처 SVG에 반영
+curl -X POST http://localhost:8000/api/detections \
+  -H "Content-Type: application/json" \
+  -d '{"detections":[{"class_name":"earthquake_building_level2","confidence":0.85}]}'
+
+# 누적 초기화
+curl -X POST http://localhost:8000/api/view-slot/reset
+```
+
+ict2026 YOLO 추론 파이프라인(`ict2026/src/inference_pipeline.py`)이 라즈베리파이에서
+실시간 detection rows를 만들고, 위 라우트로 전송하면 대시보드에 그대로 반영된다.
+
+---
+
 ## 라이선스 / 출처 표기
 
 본 프로젝트는 다음 외부 데이터를 사용한다. 대시보드 푸터에 출처 명시:

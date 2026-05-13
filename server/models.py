@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import List, Optional
 
 
 class AnalysisData(BaseModel):
@@ -20,3 +20,20 @@ class DroneData(BaseModel):
     timestamp: float
     analysis: Optional[AnalysisData] = None
     image_base64: Optional[str] = None
+
+
+class DetectionRow(BaseModel):
+    class_name: str
+    confidence: float
+    bbox_xyxy: Optional[List[float]] = None
+
+
+class DetectionBatch(BaseModel):
+    drone_id: Optional[str] = None
+    timestamp: Optional[float] = None
+    inference_ms: Optional[int] = None
+    detections: List[DetectionRow]
+
+
+class ViewSlotRequest(BaseModel):
+    slot_id: str

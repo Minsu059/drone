@@ -4,9 +4,11 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
-from models import DroneData
+from fastapi import HTTPException
+from models import DroneData, DetectionBatch, ViewSlotRequest
 from database import init_db, get_connection
 import miniature_map as mm
+import view_slot as vs
 
 IMAGES_DIR = os.path.join(os.path.dirname(__file__), "images")
 os.makedirs(IMAGES_DIR, exist_ok=True)
@@ -161,3 +163,40 @@ async def dashboard_miniature():
         "blocked_roads": [list(e) for e in mm.MINIATURE_BLOCKED_ROADS],
         "congested_roads": [list(e) for e in mm.MINIATURE_CONGESTED_ROADS],
     }
+
+
+# ============================================================
+# 미니어처 view_slot — 누적 SVG 상태 + 수동 슬롯 전환
+# ============================================================
+
+@app.get("/api/view-slot/slots")
+async def view_slot_list():
+    """대시보드 슬롯 버튼 패널이 받을 메타 목록."""
+    return {"slots": vs.list_slots(), "active_slot_id": vs.get_map_state()["active_slot_id"]}
+
+
+@app.get("/api/view-slot/state")
+async def view_slot_state():
+    """누적된 미니어처 SVG 상태 (sections/buildings/road_incidents/drone)."""
+    return vs.get_map_state()
+
+
+@app.post("/api/view-slot")
+async def view_slot_set(req: ViewSlotRequest):
+    try:
+        return vs.set_active_slot(req.slot_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.post("/api/view-slot/reset")
+async def view_slot_reset():
+    return vs.reset()
+
+
+@app.post("/api/detections")
+async def receive_detections(batch: DetectionBatch):
+    """edge가 보낸 detection rows를 현재 활성 슬롯으로 태깅 + 누적 갱신."""
+    rows = [d.model_dump() for d in batch.detections]
+    applied = vs.apply_detections(rows)
+    return {"status": "ok", "applied": applied, "state": vs.get_map_state()}

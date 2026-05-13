@@ -40,7 +40,18 @@ server/dashboard/node_modules/
 server/dashboard/dist/
 server/dashboard/.vite/
 
-# ���� �� (DB, ���� �̹���, �ӽ� ���)
+# 데이터/DB/이미지/백업
 *.db
 server/images/
 _backup/
+
+# ict2026 — 코드만 커밋, 데이터셋/가중치/runs 결과는 로컬에만
+ict2026/makertone.yolo26/
+ict2026/runs/
+ict2026/best_yolo8.pt
+ict2026/last_yolo8.pt
+ict2026/model/best_model.pth
+ict2026/model/*.pth
+ict2026/model/*.pt
+ict2026/**/*.cache
+ict2026/**/__pycache__/

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import 'leaflet/dist/leaflet.css';
 import { WideView } from './components/WideView';
 import { MiniatureModal } from './components/MiniatureModal';
-import { MiniatureView } from './components/MiniatureView';
+import { RiskMapContainer } from './components/RiskMapContainer';
 import { DisasterSidebar } from './components/DisasterSidebar';
 import {
   fetchWideDashboard,
@@ -87,7 +87,7 @@ export default function App() {
         zoneName={miniatureZone}
         onClose={() => setMiniatureZone(null)}
       >
-        <MiniatureView miniature={miniature} />
+        <RiskMapContainer />
       </MiniatureModal>
     </div>
   );
