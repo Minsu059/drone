@@ -1,4 +1,5 @@
 import base64
+import json
 import os
 
 from fastapi import FastAPI
@@ -144,6 +145,30 @@ async def dashboard_wide():
             "center": list(mm.MINIATURE_ENTRY_POINT["center"]),
         },
     }
+
+
+_BOUNDARY_PATH = os.path.join(
+    os.path.dirname(__file__), "..", "data", "admin_boundary_kau_region.geojson"
+)
+
+
+def _load_boundary() -> dict:
+    """VWorld 행정구역 GeoJSON. 파일 없으면 빈 FeatureCollection."""
+    try:
+        with open(_BOUNDARY_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {"type": "FeatureCollection", "features": []}
+
+
+# 모듈 로드 시 1회만 디스크에서 읽어 캐싱 (1MB, 정적 데이터)
+_BOUNDARY_CACHE = _load_boundary()
+
+
+@app.get("/api/dashboard/boundary")
+async def dashboard_boundary():
+    """KAU 인근 읍면동 행정구역 경계 (VWorld). 광역 뷰 폴리곤 레이어용."""
+    return _BOUNDARY_CACHE
 
 
 @app.get("/api/dashboard/miniature")

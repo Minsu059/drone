@@ -4,6 +4,7 @@
  * Vite dev 시에는 server.proxy 를 통해 :8000 으로 전달됨.
  */
 
+import type { FeatureCollection } from 'geojson';
 import type {
   LatLng,
   VirtualDrone,
@@ -53,6 +54,11 @@ export function fetchWideDashboard(): Promise<WideDashboardResponse> {
 
 export function fetchMiniatureDashboard(): Promise<MiniatureDashboardResponse> {
   return getJSON<MiniatureDashboardResponse>('/api/dashboard/miniature');
+}
+
+/** VWorld 읍면동 행정구역 경계 (emd_kor_nm 속성 보유). 광역 폴리곤 레이어용. */
+export function fetchBoundary(): Promise<FeatureCollection> {
+  return getJSON<FeatureCollection>('/api/dashboard/boundary');
 }
 
 // ============================================================

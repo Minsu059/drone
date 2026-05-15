@@ -4,9 +4,11 @@ import { WideView } from './components/WideView';
 import { MiniatureModal } from './components/MiniatureModal';
 import { RiskMapContainer } from './components/RiskMapContainer';
 import { DisasterSidebar } from './components/DisasterSidebar';
+import type { FeatureCollection } from 'geojson';
 import {
   fetchWideDashboard,
   fetchMiniatureDashboard,
+  fetchBoundary,
   type WideDashboardResponse,
   type MiniatureDashboardResponse,
 } from './api/dashboard';
@@ -14,16 +16,18 @@ import {
 export default function App() {
   const [wide, setWide] = useState<WideDashboardResponse | null>(null);
   const [miniature, setMiniature] = useState<MiniatureDashboardResponse | null>(null);
+  const [boundary, setBoundary] = useState<FeatureCollection | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [miniatureZone, setMiniatureZone] = useState<string | null>(null);
   const [focusedDisasterId, setFocusedDisasterId] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([fetchWideDashboard(), fetchMiniatureDashboard()])
-      .then(([w, m]) => {
+    Promise.all([fetchWideDashboard(), fetchMiniatureDashboard(), fetchBoundary()])
+      .then(([w, m, b]) => {
         setWide(w);
         setMiniature(m);
+        setBoundary(b);
       })
       .catch((err: unknown) => {
         setLoadError(err instanceof Error ? err.message : String(err));
@@ -44,7 +48,7 @@ export default function App() {
     );
   }
 
-  if (!wide || !miniature) {
+  if (!wide || !miniature || !boundary) {
     return <div className="app-loading">대시보드 데이터 불러오는 중…</div>;
   }
 
@@ -67,6 +71,7 @@ export default function App() {
         <div className="app-map">
           <WideView
             wide={wide}
+            boundary={boundary}
             onZoneClick={(zone) => setMiniatureZone(zone)}
             focusedDisasterId={focusedDisasterId}
           />
@@ -79,7 +84,7 @@ export default function App() {
       </main>
       <footer className="app-footer">
         © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors
-        {' · '}VWorld <span className="footer-tbd">(연동 예정)</span>
+        {' · '}행정구역 © <a href="https://www.vworld.kr" target="_blank" rel="noreferrer">VWorld</a> (국토교통부)
         {' · '}공공데이터포털 <span className="footer-tbd">(연동 예정)</span>
       </footer>
       <MiniatureModal

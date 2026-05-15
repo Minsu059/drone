@@ -6,9 +6,11 @@ import {
   CircleMarker,
   Circle,
   Popup,
+  GeoJSON,
   useMap,
 } from 'react-leaflet';
 import type L from 'leaflet';
+import type { FeatureCollection } from 'geojson';
 import {
   type DisasterType,
   type VirtualDisaster,
@@ -20,9 +22,17 @@ import { DRONE_ICON, DISASTER_ICONS } from '../utils/mapIcons';
 
 interface Props {
   wide: WideDashboardResponse;
+  boundary: FeatureCollection;
   onZoneClick: (zoneName: string) => void;
   focusedDisasterId: string | null;
 }
+
+const BOUNDARY_STYLE = {
+  color: '#7ba7c4',
+  weight: 1,
+  fillColor: '#7ba7c4',
+  fillOpacity: 0.05,
+};
 
 const DISASTER_LABEL: Record<DisasterType, string> = {
   fire: '화재',
@@ -97,7 +107,7 @@ function MapFocuser({ disasters, focusedId, markerRefs }: FocuserProps) {
   return null;
 }
 
-export function WideView({ wide, onZoneClick, focusedDisasterId }: Props) {
+export function WideView({ wide, boundary, onZoneClick, focusedDisasterId }: Props) {
   const markerRefs = useRef<Map<string, L.Marker>>(new Map());
   const { view, drones, disasters, miniature_entry } = wide;
 
@@ -112,6 +122,20 @@ export function WideView({ wide, onZoneClick, focusedDisasterId }: Props) {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       />
+
+      {/* 행정구역 경계 (VWorld 읍면동) */}
+      {boundary.features.length > 0 && (
+        <GeoJSON
+          data={boundary}
+          style={BOUNDARY_STYLE}
+          onEachFeature={(feature, layer) => {
+            const name = feature.properties?.emd_kor_nm as string | undefined;
+            if (name) {
+              layer.bindTooltip(name, { sticky: true, className: 'boundary-tooltip' });
+            }
+          }}
+        />
+      )}
 
       <MapFocuser
         disasters={disasters}
