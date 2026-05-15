@@ -7,6 +7,8 @@ import {
   Circle,
   Popup,
   GeoJSON,
+  LayersControl,
+  LayerGroup,
   useMap,
 } from 'react-leaflet';
 import type L from 'leaflet';
@@ -15,14 +17,25 @@ import {
   type DisasterType,
   type VirtualDisaster,
 } from '../data/mockData';
-import type { WideDashboardResponse } from '../api/dashboard';
+import type {
+  WideDashboardResponse,
+  InfraResponse,
+  InfraPoint,
+} from '../api/dashboard';
 import { riskScoreToColor } from '../utils/coords';
 import { computeRisk } from '../utils/risk';
-import { DRONE_ICON, DISASTER_ICONS } from '../utils/mapIcons';
+import {
+  DRONE_ICON,
+  DISASTER_ICONS,
+  INFRA_ICONS,
+  SHELTER_COLOR,
+  SHELTER_STROKE,
+} from '../utils/mapIcons';
 
 interface Props {
   wide: WideDashboardResponse;
   boundary: FeatureCollection;
+  infra: InfraResponse;
   onZoneClick: (zoneName: string) => void;
   focusedDisasterId: string | null;
 }
@@ -33,6 +46,19 @@ const BOUNDARY_STYLE = {
   fillColor: '#7ba7c4',
   fillOpacity: 0.05,
 };
+
+function InfraPopup({ p, label }: { p: InfraPoint; label: string }) {
+  const addr = (p['주소'] ?? p['도로명전체주소'] ?? '') as string;
+  return (
+    <div className="popup">
+      <div className="popup-title">{p.name}</div>
+      <div className="popup-meta">
+        {label} · KAU 직선거리 {Math.round(p.distance_m)}m
+      </div>
+      {addr && <div className="popup-addr">{addr}</div>}
+    </div>
+  );
+}
 
 const DISASTER_LABEL: Record<DisasterType, string> = {
   fire: '화재',
@@ -107,7 +133,7 @@ function MapFocuser({ disasters, focusedId, markerRefs }: FocuserProps) {
   return null;
 }
 
-export function WideView({ wide, boundary, onZoneClick, focusedDisasterId }: Props) {
+export function WideView({ wide, boundary, infra, onZoneClick, focusedDisasterId }: Props) {
   const markerRefs = useRef<Map<string, L.Marker>>(new Map());
   const { view, drones, disasters, miniature_entry } = wide;
 
@@ -143,7 +169,7 @@ export function WideView({ wide, boundary, onZoneClick, focusedDisasterId }: Pro
         markerRefs={markerRefs}
       />
 
-      {/* 재난 영향 반경 */}
+      {/* 재난 영향 반경 — 외곽 채움 + 점선 테두리로 범위 강조 */}
       {disasters.map((d) => {
         const risk = computeRisk(d);
         const color = riskScoreToColor(risk.total);
@@ -155,9 +181,9 @@ export function WideView({ wide, boundary, onZoneClick, focusedDisasterId }: Pro
             pathOptions={{
               color,
               fillColor: color,
-              fillOpacity: 0.18,
-              weight: 1.5,
-              dashArray: '4 3',
+              fillOpacity: 0.2,
+              weight: 3,
+              dashArray: '8 5',
             }}
             interactive={false}
           />
@@ -230,6 +256,63 @@ export function WideView({ wide, boundary, onZoneClick, focusedDisasterId }: Pro
           </div>
         </Popup>
       </CircleMarker>
+
+      {/* 공공 인프라 토글 레이어 (대피소/소방서/병원) */}
+      <LayersControl position="topright" collapsed={false}>
+        <LayersControl.Overlay name={`🟡 대피소 (${infra.shelters.length})`}>
+          <LayerGroup>
+            {infra.shelters.map((s, i) => (
+              <CircleMarker
+                key={`sh-${i}`}
+                center={[s.lat, s.lon]}
+                radius={5}
+                pathOptions={{
+                  color: SHELTER_STROKE,
+                  fillColor: SHELTER_COLOR,
+                  fillOpacity: 0.85,
+                  weight: 1.5,
+                }}
+              >
+                <Popup>
+                  <InfraPopup p={s} label="대피소" />
+                </Popup>
+              </CircleMarker>
+            ))}
+          </LayerGroup>
+        </LayersControl.Overlay>
+
+        <LayersControl.Overlay name={`🔴 소방서 (${infra.fire_stations.length})`}>
+          <LayerGroup>
+            {infra.fire_stations.map((f, i) => (
+              <Marker
+                key={`fs-${i}`}
+                position={[f.lat, f.lon]}
+                icon={INFRA_ICONS.fire_station}
+              >
+                <Popup>
+                  <InfraPopup p={f} label="119안전센터" />
+                </Popup>
+              </Marker>
+            ))}
+          </LayerGroup>
+        </LayersControl.Overlay>
+
+        <LayersControl.Overlay name={`🔵 병원 (${infra.hospitals.length})`}>
+          <LayerGroup>
+            {infra.hospitals.map((h, i) => (
+              <Marker
+                key={`hp-${i}`}
+                position={[h.lat, h.lon]}
+                icon={INFRA_ICONS.hospital}
+              >
+                <Popup>
+                  <InfraPopup p={h} label={(h['종별코드명'] as string) ?? '병원'} />
+                </Popup>
+              </Marker>
+            ))}
+          </LayerGroup>
+        </LayersControl.Overlay>
+      </LayersControl>
     </MapContainer>
   );
 }

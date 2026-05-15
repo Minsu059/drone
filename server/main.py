@@ -171,6 +171,36 @@ async def dashboard_boundary():
     return _BOUNDARY_CACHE
 
 
+_INFRA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "public")
+_INFRA_FILES = {
+    "shelters": "shelters_kau_10km.json",
+    "fire_stations": "fire_stations_kau_10km.json",
+    "hospitals": "hospitals_kau_10km.json",
+}
+
+
+def _load_infra() -> dict:
+    """공공 인프라 (대피소/소방서/병원) — filter_public_data.py 산출물.
+    파일 없으면 해당 키는 빈 리스트."""
+    result: dict = {}
+    for key, fname in _INFRA_FILES.items():
+        try:
+            with open(os.path.join(_INFRA_DIR, fname), encoding="utf-8") as f:
+                result[key] = json.load(f)
+        except FileNotFoundError:
+            result[key] = []
+    return result
+
+
+_INFRA_CACHE = _load_infra()
+
+
+@app.get("/api/dashboard/infra")
+async def dashboard_infra():
+    """공공 인프라 — 대피소/소방서/병원 (KAU 10km). 광역 뷰 토글 레이어용."""
+    return _INFRA_CACHE
+
+
 @app.get("/api/dashboard/miniature")
 async def dashboard_miniature():
     return {

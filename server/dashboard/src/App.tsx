@@ -9,25 +9,34 @@ import {
   fetchWideDashboard,
   fetchMiniatureDashboard,
   fetchBoundary,
+  fetchInfra,
   type WideDashboardResponse,
   type MiniatureDashboardResponse,
+  type InfraResponse,
 } from './api/dashboard';
 
 export default function App() {
   const [wide, setWide] = useState<WideDashboardResponse | null>(null);
   const [miniature, setMiniature] = useState<MiniatureDashboardResponse | null>(null);
   const [boundary, setBoundary] = useState<FeatureCollection | null>(null);
+  const [infra, setInfra] = useState<InfraResponse | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [miniatureZone, setMiniatureZone] = useState<string | null>(null);
   const [focusedDisasterId, setFocusedDisasterId] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([fetchWideDashboard(), fetchMiniatureDashboard(), fetchBoundary()])
-      .then(([w, m, b]) => {
+    Promise.all([
+      fetchWideDashboard(),
+      fetchMiniatureDashboard(),
+      fetchBoundary(),
+      fetchInfra(),
+    ])
+      .then(([w, m, b, i]) => {
         setWide(w);
         setMiniature(m);
         setBoundary(b);
+        setInfra(i);
       })
       .catch((err: unknown) => {
         setLoadError(err instanceof Error ? err.message : String(err));
@@ -48,7 +57,7 @@ export default function App() {
     );
   }
 
-  if (!wide || !miniature || !boundary) {
+  if (!wide || !miniature || !boundary || !infra) {
     return <div className="app-loading">대시보드 데이터 불러오는 중…</div>;
   }
 
@@ -72,6 +81,7 @@ export default function App() {
           <WideView
             wide={wide}
             boundary={boundary}
+            infra={infra}
             onZoneClick={(zone) => setMiniatureZone(zone)}
             focusedDisasterId={focusedDisasterId}
           />
@@ -85,7 +95,7 @@ export default function App() {
       <footer className="app-footer">
         © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors
         {' · '}행정구역 © <a href="https://www.vworld.kr" target="_blank" rel="noreferrer">VWorld</a> (국토교통부)
-        {' · '}공공데이터포털 <span className="footer-tbd">(연동 예정)</span>
+        {' · '}공공데이터 © 행정안전부·소방청·심평원 (<a href="https://www.data.go.kr" target="_blank" rel="noreferrer">data.go.kr</a>)
       </footer>
       <MiniatureModal
         open={miniatureZone !== null}

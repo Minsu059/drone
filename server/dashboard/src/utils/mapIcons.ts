@@ -11,6 +11,7 @@ import {
   Droplets,
   Activity,
   Mountain,
+  Hospital,
   type LucideProps,
 } from 'lucide-react';
 import type { DisasterType } from '../data/mockData';
@@ -31,8 +32,8 @@ const DISASTER_BG: Record<DisasterType, string> = {
   landslide: '#7c3aed',
 };
 
-const DISASTER_BADGE_PX = 32;
-const DISASTER_GLYPH_PX = 18;
+const DISASTER_BADGE_PX = 42;
+const DISASTER_GLYPH_PX = 24;
 const DRONE_BADGE_PX = 28;
 
 function lucideSvg(Comp: LucideIcon, size: number): string {
@@ -92,3 +93,48 @@ export const DISASTER_ICONS: Record<DisasterType, L.DivIcon> = {
 
 // 사이드바·범례 등에서 React 컴포넌트로 직접 쓰고 싶을 때
 export const DISASTER_LUCIDE: Record<DisasterType, LucideIcon> = DISASTER_ICON_COMP;
+
+// ============================================================
+// 공공 인프라 마커 (소방서·병원). 대피소는 수가 많아 CircleMarker 사용.
+// ============================================================
+
+export type InfraKind = 'fire_station' | 'hospital';
+
+const INFRA_BADGE_PX = 28;
+const INFRA_GLYPH_PX = 16;
+
+// 병원 — Hospital 아이콘 배지 (파랑)
+function hospitalIcon(): L.DivIcon {
+  const svg = lucideSvg(Hospital, INFRA_GLYPH_PX);
+  const html = `<div class="map-marker map-marker-infra" style="background:#2563eb">${svg}</div>`;
+  return L.divIcon({
+    html,
+    className: 'map-marker-wrap',
+    iconSize: [INFRA_BADGE_PX, INFRA_BADGE_PX],
+    iconAnchor: [INFRA_BADGE_PX / 2, INFRA_BADGE_PX / 2],
+    popupAnchor: [0, -INFRA_BADGE_PX / 2 + 2],
+  });
+}
+
+// 소방서 — "119" 텍스트 pill (아이콘보다 가시성 ↑)
+const FIRE_PILL_W = 38;
+const FIRE_PILL_H = 22;
+function fireStationIcon(): L.DivIcon {
+  const html = `<div class="map-marker-119">119</div>`;
+  return L.divIcon({
+    html,
+    className: 'map-marker-wrap',
+    iconSize: [FIRE_PILL_W, FIRE_PILL_H],
+    iconAnchor: [FIRE_PILL_W / 2, FIRE_PILL_H / 2],
+    popupAnchor: [0, -FIRE_PILL_H / 2 + 2],
+  });
+}
+
+// 대피소 CircleMarker 색상 (노랑)
+export const SHELTER_COLOR = '#facc15';
+export const SHELTER_STROKE = '#a16207';
+
+export const INFRA_ICONS: Record<InfraKind, L.DivIcon> = {
+  fire_station: fireStationIcon(),
+  hospital: hospitalIcon(),
+};

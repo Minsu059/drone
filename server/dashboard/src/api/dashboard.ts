@@ -61,6 +61,26 @@ export function fetchBoundary(): Promise<FeatureCollection> {
   return getJSON<FeatureCollection>('/api/dashboard/boundary');
 }
 
+/** 공공 인프라 1건 — 데이터셋별 부가 컬럼은 인덱스 시그니처로 수용. */
+export interface InfraPoint {
+  name: string;
+  lat: number;
+  lon: number;
+  distance_m: number;
+  [key: string]: string | number;
+}
+
+export interface InfraResponse {
+  shelters: InfraPoint[];
+  fire_stations: InfraPoint[];
+  hospitals: InfraPoint[];
+}
+
+/** 공공 인프라 (대피소/소방서/병원, KAU 10km). 광역 토글 레이어용. */
+export function fetchInfra(): Promise<InfraResponse> {
+  return getJSON<InfraResponse>('/api/dashboard/infra');
+}
+
 // ============================================================
 // 미니어처 view_slot (누적 SVG 상태 + 수동 슬롯 전환)
 // 백엔드 server/view_slot.py 와 1:1 매칭
