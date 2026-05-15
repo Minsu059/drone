@@ -14,7 +14,7 @@ CENTER = (37.6000, 126.8645)  # 한국항공대
 DIST_M = 5000
 NETWORK_TYPE = "drive"
 
-OUT_PATH = Path(__file__).resolve().parent.parent / "data" / "road_kau_5km.graphml"
+OUT_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "road_kau_5km.graphml"
 
 
 def main() -> int:

@@ -26,7 +26,7 @@ RADIUS_M = 6000               # 반경(미터). 광역 뷰가 5km라 살짝 여�
 # 받을 데이터: 읍면동 단위 경계
 DATA_TYPE = "LT_C_ADEMD_INFO"
 
-OUT_PATH = Path(__file__).resolve().parent.parent / "data" / "admin_boundary_kau_region.geojson"
+OUT_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "admin_boundary_kau_region.geojson"
 
 
 def fetch_boundary(api_key: str) -> dict:
