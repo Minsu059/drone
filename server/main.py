@@ -10,6 +10,7 @@ from models import DroneData, DetectionBatch, ViewSlotRequest
 from database import init_db, get_connection
 import miniature_map as mm
 import view_slot as vs
+import routing
 
 IMAGES_DIR = os.path.join(os.path.dirname(__file__), "images")
 os.makedirs(IMAGES_DIR, exist_ok=True)
@@ -199,6 +200,18 @@ _INFRA_CACHE = _load_infra()
 async def dashboard_infra():
     """공공 인프라 — 대피소/소방서/병원 (KAU 10km). 광역 뷰 토글 레이어용."""
     return _INFRA_CACHE
+
+
+# 경로 추론 — 각 재난별 최근접 119안전센터 골든타임 경로 (서버 시작 시 1회 계산)
+_ROUTES_CACHE = routing.compute_routes(
+    mm.VIRTUAL_DISASTERS, _INFRA_CACHE["fire_stations"]
+)
+
+
+@app.get("/api/dashboard/routes")
+async def dashboard_routes():
+    """각 재난 → 최근접 119안전센터 경로 (차단/정체 회피). 광역 경로 레이어용."""
+    return {"routes": _ROUTES_CACHE}
 
 
 @app.get("/api/dashboard/miniature")

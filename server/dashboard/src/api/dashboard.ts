@@ -81,6 +81,26 @@ export function fetchInfra(): Promise<InfraResponse> {
   return getJSON<InfraResponse>('/api/dashboard/infra');
 }
 
+/** 재난별 최근접 119안전센터 골든타임 경로 1건. */
+export interface RouteInfo {
+  disaster_id: string;
+  fire_station: string | null;
+  fire_station_lat?: number;
+  fire_station_lon?: number;
+  path: [number, number][];
+  distance_m: number;
+  eta_min: number;
+}
+
+export interface RoutesResponse {
+  routes: RouteInfo[];
+}
+
+/** 각 재난 → 최근접 119안전센터 경로 (차단/정체 회피). 광역 경로 레이어용. */
+export function fetchRoutes(): Promise<RoutesResponse> {
+  return getJSON<RoutesResponse>('/api/dashboard/routes');
+}
+
 // ============================================================
 // 미니어처 view_slot (누적 SVG 상태 + 수동 슬롯 전환)
 // 백엔드 server/view_slot.py 와 1:1 매칭

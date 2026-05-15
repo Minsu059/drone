@@ -5,7 +5,9 @@ import {
   Marker,
   CircleMarker,
   Circle,
+  Polyline,
   Popup,
+  Tooltip,
   GeoJSON,
   LayersControl,
   LayerGroup,
@@ -21,6 +23,7 @@ import type {
   WideDashboardResponse,
   InfraResponse,
   InfraPoint,
+  RouteInfo,
 } from '../api/dashboard';
 import { riskScoreToColor } from '../utils/coords';
 import { computeRisk } from '../utils/risk';
@@ -36,9 +39,13 @@ interface Props {
   wide: WideDashboardResponse;
   boundary: FeatureCollection;
   infra: InfraResponse;
+  routes: RouteInfo[];
   onZoneClick: (zoneName: string) => void;
   focusedDisasterId: string | null;
 }
+
+// 구조 경로 색상 (빨강)
+const ROUTE_COLOR = '#dc2626';
 
 const BOUNDARY_STYLE = {
   color: '#7ba7c4',
@@ -133,7 +140,14 @@ function MapFocuser({ disasters, focusedId, markerRefs }: FocuserProps) {
   return null;
 }
 
-export function WideView({ wide, boundary, infra, onZoneClick, focusedDisasterId }: Props) {
+export function WideView({
+  wide,
+  boundary,
+  infra,
+  routes,
+  onZoneClick,
+  focusedDisasterId,
+}: Props) {
   const markerRefs = useRef<Map<string, L.Marker>>(new Map());
   const { view, drones, disasters, miniature_entry } = wide;
 
@@ -187,6 +201,28 @@ export function WideView({ wide, boundary, infra, onZoneClick, focusedDisasterId
             }}
             interactive={false}
           />
+        );
+      })}
+
+      {/* 구조 경로 — 최근접 119안전센터 → 재난 (차단/정체 회피) */}
+      {routes.map((r) => {
+        if (r.path.length < 2) return null;
+        const focused = focusedDisasterId === r.disaster_id;
+        return (
+          <Polyline
+            key={`route-${r.disaster_id}`}
+            positions={r.path}
+            pathOptions={{
+              color: ROUTE_COLOR,
+              weight: focused ? 8 : 5,
+              opacity: focused ? 1 : 0.9,
+              dashArray: focused ? undefined : '10 6',
+            }}
+          >
+            <Tooltip sticky>
+              {r.fire_station} → {(r.distance_m / 1000).toFixed(1)}km · ETA {r.eta_min}분
+            </Tooltip>
+          </Polyline>
         );
       })}
 

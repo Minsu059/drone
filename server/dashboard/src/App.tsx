@@ -3,16 +3,19 @@ import 'leaflet/dist/leaflet.css';
 import { WideView } from './components/WideView';
 import { MiniatureModal } from './components/MiniatureModal';
 import { RiskMapContainer } from './components/RiskMapContainer';
-import { DisasterSidebar } from './components/DisasterSidebar';
+import { DisasterBar } from './components/DisasterBar';
+import { DisasterDetail } from './components/DisasterDetail';
 import type { FeatureCollection } from 'geojson';
 import {
   fetchWideDashboard,
   fetchMiniatureDashboard,
   fetchBoundary,
   fetchInfra,
+  fetchRoutes,
   type WideDashboardResponse,
   type MiniatureDashboardResponse,
   type InfraResponse,
+  type RoutesResponse,
 } from './api/dashboard';
 
 export default function App() {
@@ -20,6 +23,7 @@ export default function App() {
   const [miniature, setMiniature] = useState<MiniatureDashboardResponse | null>(null);
   const [boundary, setBoundary] = useState<FeatureCollection | null>(null);
   const [infra, setInfra] = useState<InfraResponse | null>(null);
+  const [routes, setRoutes] = useState<RoutesResponse | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [miniatureZone, setMiniatureZone] = useState<string | null>(null);
@@ -31,12 +35,14 @@ export default function App() {
       fetchMiniatureDashboard(),
       fetchBoundary(),
       fetchInfra(),
+      fetchRoutes(),
     ])
-      .then(([w, m, b, i]) => {
+      .then(([w, m, b, i, r]) => {
         setWide(w);
         setMiniature(m);
         setBoundary(b);
         setInfra(i);
+        setRoutes(r);
       })
       .catch((err: unknown) => {
         setLoadError(err instanceof Error ? err.message : String(err));
@@ -57,9 +63,15 @@ export default function App() {
     );
   }
 
-  if (!wide || !miniature || !boundary || !infra) {
+  if (!wide || !miniature || !boundary || !infra || !routes) {
     return <div className="app-loading">대시보드 데이터 불러오는 중…</div>;
   }
+
+  const focusedDisaster =
+    wide.disasters.find((d) => d.id === focusedDisasterId) ?? null;
+  const focusedRoute = routes.routes.find(
+    (r) => r.disaster_id === focusedDisasterId,
+  );
 
   return (
     <div className="app">
@@ -82,16 +94,18 @@ export default function App() {
             wide={wide}
             boundary={boundary}
             infra={infra}
+            routes={routes.routes}
             onZoneClick={(zone) => setMiniatureZone(zone)}
             focusedDisasterId={focusedDisasterId}
           />
         </div>
-        <DisasterSidebar
-          disasters={wide.disasters}
-          focusedId={focusedDisasterId}
-          onSelect={handleSelectDisaster}
-        />
+        <DisasterDetail disaster={focusedDisaster} route={focusedRoute} />
       </main>
+      <DisasterBar
+        disasters={wide.disasters}
+        focusedId={focusedDisasterId}
+        onSelect={handleSelectDisaster}
+      />
       <footer className="app-footer">
         © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors
         {' · '}행정구역 © <a href="https://www.vworld.kr" target="_blank" rel="noreferrer">VWorld</a> (국토교통부)
