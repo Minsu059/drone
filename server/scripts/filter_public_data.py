@@ -34,26 +34,30 @@ CONFIG = {
     "shelters": {
         "input": "shelters.csv",
         "output": "shelters_kau_10km.json",
-        "lat_col": "위도",
-        "lon_col": "경도",
+        "lat_col": "위도(EPSG4326)",
+        "lon_col": "경도(EPSG4326)",
         "name_col": "시설명",
-        "extra_cols": ["주소", "수용인원", "시설구분"],
+        "extra_cols": ["도로명전체주소", "최대수용인원", "시설구분", "운영상태"],
     },
     "fire_stations": {
+        # geocode_fire_stations.py 가 위도/경도 컬럼을 채워 생성한 CSV
         "input": "fire_stations.csv",
         "output": "fire_stations_kau_10km.json",
         "lat_col": "위도",
         "lon_col": "경도",
-        "name_col": "센터명",
-        "extra_cols": ["소재지도로명주소", "전화번호"],
+        "name_col": "119안전센터명",
+        "extra_cols": ["소방서명", "주소", "전화번호"],
     },
     "hospitals": {
         "input": "hospitals.csv",
         "output": "hospitals_kau_10km.json",
-        "lat_col": "위도",
-        "lon_col": "경도",
+        "lat_col": "좌표(Y)",
+        "lon_col": "좌표(X)",
         "name_col": "요양기관명",
-        "extra_cols": ["주소", "응급실운영여부"],
+        "extra_cols": ["주소", "전화번호", "종별코드명"],
+        # 재난 대응 관점 — 병원급 이상만. 의원/치과/한의원/보건소 제외.
+        "keep_col": "종별코드명",
+        "keep_values": ["상급종합", "종합병원", "병원", "요양병원"],
     },
 }
 
@@ -82,6 +86,8 @@ def filter_dataset(kind: str) -> int:
         return 1
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
+    keep_col = cfg.get("keep_col")
+    keep_values = set(cfg.get("keep_values", []))
     items = []
     skipped = 0
 
@@ -96,6 +102,8 @@ def filter_dataset(kind: str) -> int:
     with f:
         reader = csv.DictReader(f)
         for row in reader:
+            if keep_col and row.get(keep_col) not in keep_values:
+                continue
             try:
                 lat = float(row[cfg["lat_col"]])
                 lon = float(row[cfg["lon_col"]])
