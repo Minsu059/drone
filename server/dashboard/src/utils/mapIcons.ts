@@ -12,6 +12,7 @@ import {
   Activity,
   Mountain,
   Hospital,
+  Construction,
   type LucideProps,
 } from 'lucide-react';
 import type { DisasterType } from '../data/mockData';
@@ -34,7 +35,7 @@ const DISASTER_BG: Record<DisasterType, string> = {
 
 const DISASTER_BADGE_PX = 42;
 const DISASTER_GLYPH_PX = 24;
-const DRONE_BADGE_PX = 28;
+const DRONE_BADGE_PX = 46;
 
 function lucideSvg(Comp: LucideIcon, size: number): string {
   return renderToStaticMarkup(
@@ -71,19 +72,23 @@ const DRONE_SVG = `
 </svg>
 `.trim();
 
-function droneIcon(): L.DivIcon {
-  const html = `<div class="map-marker map-marker-drone">${DRONE_SVG}</div>`;
+function droneIcon(extraClass: string, wrapClass: string): L.DivIcon {
+  const html = `<div class="map-marker ${extraClass}">${DRONE_SVG}</div>`;
   return L.divIcon({
     html,
-    className: 'map-marker-wrap',
+    className: wrapClass,
     iconSize: [DRONE_BADGE_PX, DRONE_BADGE_PX],
     iconAnchor: [DRONE_BADGE_PX / 2, DRONE_BADGE_PX / 2],
     popupAnchor: [0, -DRONE_BADGE_PX / 2 + 2],
   });
 }
 
-// 모듈 레벨 캐시 — 매 렌더마다 재생성하지 않음
-export const DRONE_ICON: L.DivIcon = droneIcon();
+// 라즈베리파이 실시간 드론 — 파란 배지. live-drone-move 클래스로 위치 변경 시
+// transform transition 을 걸어 폴링 간 이동을 매끄럽게 표현.
+export const LIVE_DRONE_ICON: L.DivIcon = droneIcon(
+  'map-marker-live-drone',
+  'map-marker-wrap live-drone-move',
+);
 export const DISASTER_ICONS: Record<DisasterType, L.DivIcon> = {
   fire: disasterIcon('fire'),
   flood: disasterIcon('flood'),
@@ -138,3 +143,20 @@ export const INFRA_ICONS: Record<InfraKind, L.DivIcon> = {
   fire_station: fireStationIcon(),
   hospital: hospitalIcon(),
 };
+
+// 도로 통제 포인트 — 주황 경고 배지
+const BLOCKAGE_BADGE_PX = 26;
+function blockageIcon(): L.DivIcon {
+  const svg = lucideSvg(Construction, 15);
+  const html = `<div class="map-marker map-marker-blockage" style="background:#ea580c">${svg}</div>`;
+  return L.divIcon({
+    html,
+    className: 'map-marker-wrap',
+    iconSize: [BLOCKAGE_BADGE_PX, BLOCKAGE_BADGE_PX],
+    iconAnchor: [BLOCKAGE_BADGE_PX / 2, BLOCKAGE_BADGE_PX / 2],
+    popupAnchor: [0, -BLOCKAGE_BADGE_PX / 2 + 2],
+  });
+}
+
+export const BLOCKAGE_COLOR = '#ea580c';
+export const BLOCKAGE_ICON: L.DivIcon = blockageIcon();

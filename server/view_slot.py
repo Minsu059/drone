@@ -1,5 +1,4 @@
-"""
-미니어처 view_slot 누적 상태 관리.
+"""미니어처 view_slot 누적 상태 관리.
 
 운영 모델:
   - 활성 슬롯(active_slot_id) 1개를 모듈 레벨 상태로 보유.
@@ -8,7 +7,8 @@
   - 리셋 버튼으로 누적 상태 초기화 (reset).
   - 누적 정책: max(prev, new). 시연 도중 표시 사라지지 않음.
 
-상세 사양은 docs/dashboard.md 의 MINIATURE_VIEW_SLOTS 섹션 참조.
+슬롯 구성 (12개): 건물 9 (A,B,C,D,F,G,H,I,J — E는 공원) + 도로 incident 3.
+좌표는 미니어처 SVG viewBox(1200×920) 기준 — 디오라마 명세와 동기화.
 """
 from __future__ import annotations
 
@@ -17,44 +17,43 @@ from typing import Optional
 
 
 # ============================================================
-# 슬롯 정의 (docs/dashboard.md 와 동기화)
-# 좌표는 docs/ui-mock/drone-risk-map.html SVG viewBox(1200×675) 기준
+# 슬롯 정의 (미니어처 디오라마 명세와 동기화, viewBox 1200×920)
 # ============================================================
 
 VIEW_SLOTS: list[dict] = [
-    # 건물 6슬롯
-    {"slot_id": "b_topleft",     "label": "건물 좌상 (붕괴)", "kind": "building",
-     "target_buildings": ["topLeft"],    "target_road_incident": None,
-     "section_influence": ["A"], "drone_marker_svg": [390, 50]},
-    {"slot_id": "b_topright",    "label": "건물 우상 (붕괴)", "kind": "building",
-     "target_buildings": ["topRight"],   "target_road_incident": None,
-     "section_influence": ["A"], "drone_marker_svg": [793, 50]},
-    {"slot_id": "b_center",      "label": "건물 중앙 (붕괴)", "kind": "building",
-     "target_buildings": ["center"],     "target_road_incident": None,
-     "section_influence": ["B"], "drone_marker_svg": [510, 248]},
-    {"slot_id": "b_rightmid",    "label": "건물 중우 (붕괴)", "kind": "building",
-     "target_buildings": ["rightMiddle"],"target_road_incident": None,
-     "section_influence": ["C"], "drone_marker_svg": [962, 264]},
-    {"slot_id": "b_bottomleft",  "label": "건물 좌하 (붕괴)", "kind": "building",
-     "target_buildings": ["bottomLeft"], "target_road_incident": None,
-     "section_influence": ["D"], "drone_marker_svg": [293, 486]},
-    {"slot_id": "b_bottomright", "label": "건물 우하 (붕괴)", "kind": "building",
-     "target_buildings": ["bottomRight"],"target_road_incident": None,
-     "section_influence": ["E"], "drone_marker_svg": [910, 486]},
+    # 건물 9슬롯 — drone_marker 는 건물 중심(centerX, centerY)
+    {"slot_id": "b_a", "label": "A동 대형 오피스", "kind": "building",
+     "target_buildings": ["A"], "target_road_incident": None, "drone_marker_svg": [200, 90]},
+    {"slot_id": "b_b", "label": "B동 중층 아파트", "kind": "building",
+     "target_buildings": ["B"], "target_road_incident": None, "drone_marker_svg": [620, 90]},
+    {"slot_id": "b_c", "label": "C동 상업 시설", "kind": "building",
+     "target_buildings": ["C"], "target_road_incident": None, "drone_marker_svg": [1020, 90]},
+    {"slot_id": "b_d", "label": "D동 주거", "kind": "building",
+     "target_buildings": ["D"], "target_road_incident": None, "drone_marker_svg": [100, 440]},
+    {"slot_id": "b_f", "label": "F동 소형 오피스", "kind": "building",
+     "target_buildings": ["F"], "target_road_incident": None, "drone_marker_svg": [840, 410]},
+    {"slot_id": "b_g", "label": "G동 소형 아파트", "kind": "building",
+     "target_buildings": ["G"], "target_road_incident": None, "drone_marker_svg": [1120, 410]},
+    {"slot_id": "b_h", "label": "H동 대단지 아파트", "kind": "building",
+     "target_buildings": ["H"], "target_road_incident": None, "drone_marker_svg": [240, 810]},
+    {"slot_id": "b_i", "label": "I동 고층 타워", "kind": "building",
+     "target_buildings": ["I"], "target_road_incident": None, "drone_marker_svg": [730, 780]},
+    {"slot_id": "b_j", "label": "J동 고층 아파트", "kind": "building",
+     "target_buildings": ["J"], "target_road_incident": None, "drone_marker_svg": [1080, 780]},
     # 도로 3슬롯
-    {"slot_id": "r_tree",    "label": "나무 쓰러짐", "kind": "road",
+    {"slot_id": "r_traffic", "label": "메인 간선 혼잡", "kind": "road",
      "target_buildings": [],
-     "target_road_incident": {"id": "tree-1",    "type": "fallenTree", "x": 1010, "y": 439},
-     "section_influence": ["C", "E"], "drone_marker_svg": [1010, 410]},
-    {"slot_id": "r_traffic", "label": "도로 혼잡", "kind": "road",
+     "target_road_incident": {"id": "traffic-1", "type": "traffic", "x": 600, "y": 250},
+     "drone_marker_svg": [600, 250]},
+    {"slot_id": "r_tree", "label": "척추도로 나무 쓰러짐", "kind": "road",
      "target_buildings": [],
-     "target_road_incident": {"id": "traffic-1", "type": "traffic",    "x": 850,  "y": 208},
-     "section_influence": ["A"], "drone_marker_svg": [850, 175]},
-    {"slot_id": "r_rubble",  "label": "건물 잔해", "kind": "road",
+     "target_road_incident": {"id": "tree-1", "type": "fallenTree", "x": 300, "y": 470},
+     "drone_marker_svg": [300, 470]},
+    {"slot_id": "r_rubble", "label": "교차로 건물 잔해", "kind": "road",
      "target_buildings": [],
-     "target_road_incident": {"id": "rubble-1",  "type": "rubble",     "x": 548,  "y": 538,
-                              "labelX": 592, "labelY": 518},
-     "section_influence": ["D", "E"], "drone_marker_svg": [548, 508]},
+     "target_road_incident": {"id": "rubble-1", "type": "rubble", "x": 300, "y": 250,
+                              "labelX": 344, "labelY": 230},
+     "drone_marker_svg": [300, 250]},
 ]
 
 SLOTS_BY_ID: dict[str, dict] = {s["slot_id"]: s for s in VIEW_SLOTS}
@@ -73,10 +72,7 @@ ROAD_INCIDENT_CLASSES = {
     "rubble":     {"road_collapse_level0": 1.0, "road_collapse_level2": 1.0, "rock": 1.0},
 }
 
-# section riskLevel 산출 임계값 (점수 0~100 → 1~4)
-SECTION_RISK_BINS = [(0, 25, 1), (25, 50, 2), (50, 75, 3), (75, 101, 4)]
 INCIDENT_INTENSITY_THRESHOLD = 0.4  # 이 이상이어야 incident 노출
-ROAD_TO_SECTION_SCORE = 80.0  # intensity 1.0이면 섹션 점수에 80점 기여
 
 
 # ============================================================
@@ -104,13 +100,6 @@ def _clamp01(v: float) -> float:
     if v > 1.0:
         return 1.0
     return v
-
-
-def _bin_section_score(score: float) -> int:
-    for lo, hi, level in SECTION_RISK_BINS:
-        if lo <= score < hi:
-            return level
-    return 1
 
 
 def _building_collapse_from_detection(class_name: str, conf: float) -> Optional[float]:
@@ -192,47 +181,11 @@ def reset() -> dict:
     return get_map_state()
 
 
-def _compute_sections() -> dict[str, dict]:
-    """누적 상태에서 섹션별 riskLevel 산출."""
-    # 섹션별 score 누적 (0~100)
-    scores: dict[str, float] = {"A": 0.0, "B": 0.0, "C": 0.0, "D": 0.0, "E": 0.0}
-
-    # 건물 → 섹션 매핑은 슬롯의 section_influence로 역추적
-    building_to_sections: dict[str, list[str]] = {}
-    for s in VIEW_SLOTS:
-        for b in s["target_buildings"]:
-            building_to_sections.setdefault(b, []).extend(s["section_influence"])
-
-    for bld_id, prob in _state["buildings"].items():
-        for sec in building_to_sections.get(bld_id, []):
-            if prob > scores[sec]:
-                scores[sec] = prob
-
-    # road incidents → 영향 섹션에 score 기여
-    incident_to_sections: dict[str, list[str]] = {}
-    for s in VIEW_SLOTS:
-        if s["kind"] != "road":
-            continue
-        inc = s["target_road_incident"]
-        incident_to_sections[inc["id"]] = s["section_influence"]
-
-    for inc_id, entry in _state["road_incidents"].items():
-        intensity = float(entry.get("intensity", 0.0))
-        contribution = intensity * ROAD_TO_SECTION_SCORE
-        for sec in incident_to_sections.get(inc_id, []):
-            if contribution > scores[sec]:
-                scores[sec] = contribution
-
-    return {sec: {"riskLevel": _bin_section_score(score), "score": round(score, 1)}
-            for sec, score in scores.items()}
-
-
 def get_map_state() -> dict:
     """프론트가 받아서 SVG에 그릴 누적 상태."""
     with _lock:
         return {
             "active_slot_id": _state["active_slot_id"],
-            "sections": _compute_sections(),
             "buildings": {bid: {"collapseProbability": prob}
                           for bid, prob in _state["buildings"].items()},
             "road_incidents": list(_state["road_incidents"].values()),

@@ -40,6 +40,8 @@ def init_db():
             fire_detected INTEGER DEFAULT 0,
             fire_confidence REAL DEFAULT 0.0,
             disaster_type TEXT DEFAULT '',
+            description TEXT DEFAULT '',
+            impact_radius_m REAL DEFAULT 150.0,
             image_base64 TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )

@@ -24,22 +24,27 @@ import type {
   InfraResponse,
   InfraPoint,
   RouteInfo,
+  LiveDrone,
 } from '../api/dashboard';
 import { riskScoreToColor } from '../utils/coords';
 import { computeRisk } from '../utils/risk';
 import {
-  DRONE_ICON,
+  LIVE_DRONE_ICON,
   DISASTER_ICONS,
   INFRA_ICONS,
   SHELTER_COLOR,
   SHELTER_STROKE,
+  BLOCKAGE_ICON,
+  BLOCKAGE_COLOR,
 } from '../utils/mapIcons';
 
 interface Props {
   wide: WideDashboardResponse;
   boundary: FeatureCollection;
   infra: InfraResponse;
+  disasters: VirtualDisaster[];
   routes: RouteInfo[];
+  liveDrones: LiveDrone[];
   onZoneClick: (zoneName: string) => void;
   focusedDisasterId: string | null;
 }
@@ -144,12 +149,14 @@ export function WideView({
   wide,
   boundary,
   infra,
+  disasters,
   routes,
+  liveDrones,
   onZoneClick,
   focusedDisasterId,
 }: Props) {
   const markerRefs = useRef<Map<string, L.Marker>>(new Map());
-  const { view, drones, disasters, miniature_entry } = wide;
+  const { view, miniature_entry, road_blockages } = wide;
 
   return (
     <MapContainer
@@ -204,6 +211,22 @@ export function WideView({
         );
       })}
 
+      {/* 도로 통제 영향 반경 */}
+      {road_blockages.map((b) => (
+        <Circle
+          key={`blk-c-${b.id}`}
+          center={[b.lat, b.lon]}
+          radius={b.radius_m}
+          pathOptions={{
+            color: BLOCKAGE_COLOR,
+            fillColor: BLOCKAGE_COLOR,
+            fillOpacity: 0.18,
+            weight: 1.5,
+          }}
+          interactive={false}
+        />
+      ))}
+
       {/* 구조 경로 — 최근접 119안전센터 → 재난 (차단/정체 회피) */}
       {routes.map((r) => {
         if (r.path.length < 2) return null;
@@ -247,18 +270,34 @@ export function WideView({
         </Marker>
       ))}
 
-      {/* 가상 드론 */}
-      {drones.map((d) => (
+      {/* 도로 통제 마커 */}
+      {road_blockages.map((b) => (
         <Marker
-          key={d.drone_id}
+          key={`blk-m-${b.id}`}
+          position={[b.lat, b.lon]}
+          icon={BLOCKAGE_ICON}
+        >
+          <Popup autoClose={false} closeOnClick={false}>
+            <div className="popup">
+              <div className="popup-title">도로 통제</div>
+              <div className="popup-meta">{b.description}</div>
+              <div className="popup-addr">반경 {b.radius_m}m · 통행 차단</div>
+            </div>
+          </Popup>
+        </Marker>
+      ))}
+
+      {/* 실제 드론 (라즈베리파이 실시간 위치 — 학교→재해현장 이동) */}
+      {liveDrones.map((d) => (
+        <Marker
+          key={`live-${d.drone_id}`}
           position={[d.lat, d.lon]}
-          icon={DRONE_ICON}
+          icon={LIVE_DRONE_ICON}
         >
           <Popup autoClose={false} closeOnClick={false}>
             <div className="popup">
               <div className="popup-title">{d.drone_id}</div>
-              <div className="popup-meta">순찰: {d.area}</div>
-              <span className="tag tag-virtual">virtual</span>
+              <div className="popup-meta">실시간 드론 · 라즈베리파이</div>
             </div>
           </Popup>
         </Marker>
@@ -333,21 +372,6 @@ export function WideView({
           </LayerGroup>
         </LayersControl.Overlay>
 
-        <LayersControl.Overlay name={`🔵 병원 (${infra.hospitals.length})`}>
-          <LayerGroup>
-            {infra.hospitals.map((h, i) => (
-              <Marker
-                key={`hp-${i}`}
-                position={[h.lat, h.lon]}
-                icon={INFRA_ICONS.hospital}
-              >
-                <Popup>
-                  <InfraPopup p={h} label={(h['종별코드명'] as string) ?? '병원'} />
-                </Popup>
-              </Marker>
-            ))}
-          </LayerGroup>
-        </LayersControl.Overlay>
       </LayersControl>
     </MapContainer>
   );

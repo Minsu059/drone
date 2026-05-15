@@ -54,8 +54,9 @@ async def receive_drone_data(data: DroneData):
         cursor.execute(
             """INSERT INTO disaster_report
             (drone_id, lat, lon, alt, timestamp, person_count, collapse_rate,
-             road_status, fire_detected, fire_confidence, disaster_type, image_base64)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+             road_status, fire_detected, fire_confidence, disaster_type,
+             description, impact_radius_m, image_base64)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 data.drone_id,
                 data.lat,
@@ -68,6 +69,8 @@ async def receive_drone_data(data: DroneData):
                 int(analysis.get("fire_detected", False)),
                 analysis.get("fire_confidence", 0.0),
                 analysis.get("disaster_type", ""),
+                analysis.get("description", ""),
+                analysis.get("impact_radius_m", 150.0),
                 data.image_base64,
             ),
         )
@@ -139,12 +142,11 @@ async def dashboard_wide():
             "center": list(mm.WIDE_VIEW["center"]),
             "zoom": mm.WIDE_VIEW["zoom"],
         },
-        "drones": mm.VIRTUAL_DRONES,
-        "disasters": mm.VIRTUAL_DISASTERS,
         "miniature_entry": {
             **mm.MINIATURE_ENTRY_POINT,
             "center": list(mm.MINIATURE_ENTRY_POINT["center"]),
         },
+        "road_blockages": mm.ROAD_BLOCKAGES,
     }
 
 
@@ -202,16 +204,64 @@ async def dashboard_infra():
     return _INFRA_CACHE
 
 
-# 경로 추론 — 각 재난별 최근접 119안전센터 골든타임 경로 (서버 시작 시 1회 계산)
-_ROUTES_CACHE = routing.compute_routes(
-    mm.VIRTUAL_DISASTERS, _INFRA_CACHE["fire_stations"]
-)
+@app.get("/api/dashboard/disasters")
+async def dashboard_disasters():
+    """라즈베리파이가 송신한 실시간 재난(disaster_report DB) + 최근접 119 경로.
+    광역 뷰가 폴링하여 실시간 갱신. 경로는 ROAD_BLOCKAGES(도로 통제) 회피 반영."""
+    conn = get_connection()
+    rows = conn.execute(
+        """SELECT id, drone_id, lat, lon, timestamp, person_count, collapse_rate,
+           road_status, fire_detected, fire_confidence, disaster_type,
+           description, impact_radius_m,
+           (image_base64 IS NOT NULL AND image_base64 != '') AS has_image
+           FROM disaster_report ORDER BY timestamp ASC"""
+    ).fetchall()
+    # 실제 드론 최신 위치 (drone_id 별 최근 timestamp)
+    drone_rows = conn.execute(
+        """SELECT drone_id, lat, lon, MAX(timestamp) AS ts
+           FROM drone_position GROUP BY drone_id"""
+    ).fetchall()
+    conn.close()
+
+    disasters = []
+    for r in rows:
+        d = dict(r)
+        disasters.append({
+            "id": f"rpt-{d['id']}",
+            "report_id": d["id"],
+            "lat": d["lat"],
+            "lon": d["lon"],
+            "disaster_type": d["disaster_type"] or "earthquake",
+            "description": d["description"] or f"{d['drone_id']} 재난 감지",
+            "person_count": d["person_count"],
+            "collapse_rate": d["collapse_rate"],
+            "fire_detected": bool(d["fire_detected"]),
+            "fire_confidence": d["fire_confidence"],
+            "road_status": d["road_status"],
+            "impact_radius_m": d["impact_radius_m"],
+            "has_image": bool(d["has_image"]),
+        })
+
+    drones = [
+        {"drone_id": dr["drone_id"], "lat": dr["lat"], "lon": dr["lon"]}
+        for dr in drone_rows
+    ]
+
+    routes = routing.compute_routes(
+        disasters, _INFRA_CACHE["fire_stations"], mm.ROAD_BLOCKAGES
+    )
+    return {"disasters": disasters, "routes": routes, "drones": drones}
 
 
-@app.get("/api/dashboard/routes")
-async def dashboard_routes():
-    """각 재난 → 최근접 119안전센터 경로 (차단/정체 회피). 광역 경로 레이어용."""
-    return {"routes": _ROUTES_CACHE}
+@app.post("/api/dashboard/reset")
+async def dashboard_reset():
+    """시연 초기화 — 누적된 재난/드론 위치 데이터 전체 삭제. 맵을 빈 상태로 되돌림."""
+    conn = get_connection()
+    conn.execute("DELETE FROM disaster_report")
+    conn.execute("DELETE FROM drone_position")
+    conn.commit()
+    conn.close()
+    return {"status": "ok", "message": "맵 초기화 완료"}
 
 
 @app.get("/api/dashboard/miniature")

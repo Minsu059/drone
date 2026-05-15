@@ -33,113 +33,35 @@ WIDE_VIEW = {
     "zoom": 13,
 }
 
-# 광역 가상 드론 배치 (반경 5km 안)
-VIRTUAL_DRONES = [
-    {"drone_id": "drone-v1", "area": "덕양구 화정동", "lat": 37.6150, "lon": 126.8320},
-    {"drone_id": "drone-v2", "area": "덕양구 행신동", "lat": 37.6120, "lon": 126.8510},
-    {"drone_id": "drone-v3", "area": "은평구 진관동", "lat": 37.6350, "lon": 126.9150},
-    {"drone_id": "drone-v4", "area": "고양시 삼송동", "lat": 37.6420, "lon": 126.8900},
+# 광역 드론은 정적 데이터가 아니다 — 라즈베리파이가 송신한 실시간 위치를
+# /api/dashboard/disasters 의 drones 필드가 노출한다 (drone_position DB 최신값).
+
+# 광역 재난은 더 이상 정적 데이터가 아니다 — 라즈베리파이가 /api/drone-data 로
+# 실시간 송신한 disaster_report DB 레코드를 /api/dashboard/disasters 가 노출한다.
+# (시연 송신 스크립트: edge/scenario_sender.py)
+
+# 광역 도로 통제 포인트 — 재난 2차 피해(도로 붕괴/잔해)로 통행 차단.
+# routing.py 의 경로 추론이 이 지점을 회피해 우회로를 재탐색한다.
+# 좌표는 각 재난의 최단경로 상에 위치 (통제 시 우회 발생).
+ROAD_BLOCKAGES = [
+    {"id": "blk-1", "lat": 37.615007, "lon": 126.835256, "radius_m": 80,
+     "status": "blocked", "type": "debris",        "description": "상가 화재 잔해 도로 점거"},
+    {"id": "blk-2", "lat": 37.634492, "lon": 126.917149, "radius_m": 80,
+     "status": "blocked", "type": "road_collapse", "description": "하천 범람 도로 유실"},
+    {"id": "blk-3", "lat": 37.643002, "lon": 126.894030, "radius_m": 80,
+     "status": "blocked", "type": "debris",        "description": "건물 균열 외벽 낙하물"},
+    {"id": "blk-4", "lat": 37.608466, "lon": 126.844854, "radius_m": 80,
+     "status": "blocked", "type": "road_collapse", "description": "가스누출 도로 통제"},
+    {"id": "blk-5", "lat": 37.586360, "lon": 126.888055, "radius_m": 80,
+     "status": "blocked", "type": "road_collapse", "description": "침수 구간 도로 통제"},
+    {"id": "blk-6", "lat": 37.616978, "lon": 126.824465, "radius_m": 80,
+     "status": "blocked", "type": "debris",        "description": "건물 붕괴 잔해 매몰"},
+    {"id": "blk-7", "lat": 37.600806, "lon": 126.907351, "radius_m": 80,
+     "status": "blocked", "type": "debris",        "description": "소방 차량 도로 점거"},
+    {"id": "blk-8", "lat": 37.610808, "lon": 126.821217, "radius_m": 80,
+     "status": "blocked", "type": "road_collapse", "description": "산사태 토사 도로 매몰"},
 ]
 
-# 광역 가상 재난 시나리오 (8건, 모두 KAU 반경 ~5km 안)
-VIRTUAL_DISASTERS = [
-    {
-        "id": "vd-1",
-        "lat": 37.6150, "lon": 126.8330,
-        "disaster_type": "fire",
-        "description": "화정동 상가 화재",
-        "person_count": 8,
-        "collapse_rate": 30.0,
-        "fire_detected": True,
-        "fire_confidence": 0.92,
-        "road_status": "congested",
-        "impact_radius_m": 150,
-    },
-    {
-        "id": "vd-2",
-        "lat": 37.6350, "lon": 126.9160,
-        "disaster_type": "flood",
-        "description": "진관동 하천 범람",
-        "person_count": 12,
-        "collapse_rate": 15.0,
-        "fire_detected": False,
-        "fire_confidence": 0.0,
-        "road_status": "blocked",
-        "impact_radius_m": 300,
-    },
-    {
-        "id": "vd-3",
-        "lat": 37.6430, "lon": 126.8910,
-        "disaster_type": "earthquake",
-        "description": "삼송동 건물 균열",
-        "person_count": 5,
-        "collapse_rate": 65.0,
-        "fire_detected": False,
-        "fire_confidence": 0.0,
-        "road_status": "congested",
-        "impact_radius_m": 200,
-    },
-    {
-        "id": "vd-4",
-        "lat": 37.6080, "lon": 126.8390,
-        "disaster_type": "fire",
-        "description": "행신동 가스누출 화재",
-        "person_count": 6,
-        "collapse_rate": 20.0,
-        "fire_detected": True,
-        "fire_confidence": 0.85,
-        "road_status": "normal",
-        "impact_radius_m": 130,
-    },
-    {
-        "id": "vd-5",
-        "lat": 37.5870, "lon": 126.8820,
-        "disaster_type": "flood",
-        "description": "화전동 도로 침수",
-        "person_count": 4,
-        "collapse_rate": 5.0,
-        "fire_detected": False,
-        "fire_confidence": 0.0,
-        "road_status": "blocked",
-        "impact_radius_m": 250,
-    },
-    {
-        "id": "vd-6",
-        "lat": 37.6125, "lon": 126.8175,
-        "disaster_type": "earthquake",
-        "description": "능곡역 인근 건물 붕괴",
-        "person_count": 9,
-        "collapse_rate": 75.0,
-        "fire_detected": False,
-        "fire_confidence": 0.0,
-        "road_status": "congested",
-        "impact_radius_m": 180,
-    },
-    {
-        "id": "vd-7",
-        "lat": 37.6180, "lon": 126.8910,
-        "disaster_type": "fire",
-        "description": "향동 빌라 화재",
-        "person_count": 3,
-        "collapse_rate": 40.0,
-        "fire_detected": True,
-        "fire_confidence": 0.78,
-        "road_status": "normal",
-        "impact_radius_m": 120,
-    },
-    {
-        "id": "vd-8",
-        "lat": 37.6033, "lon": 126.8260,
-        "disaster_type": "landslide",
-        "description": "행주산성 산사태",
-        "person_count": 2,
-        "collapse_rate": 70.0,
-        "fire_detected": False,
-        "fire_confidence": 0.0,
-        "road_status": "blocked",
-        "impact_radius_m": 220,
-    },
-]
 
 # 미니어처 드릴다운 진입점 (한국항공대만)
 # 광역 위험도 히트맵 용도가 아니라 "여기 클릭 → 미니어처 모달" 트리거

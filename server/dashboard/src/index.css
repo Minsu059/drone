@@ -254,6 +254,13 @@ a { color: var(--accent); }
   color: var(--text-mute);
 }
 
+.detail-image {
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  display: block;
+}
+
 /* ============================================================
    Bottom bar — 재난 목록
    ============================================================ */
@@ -478,9 +485,18 @@ a { color: var(--accent); }
 }
 .map-marker svg { display: block; }
 
-/* 드론은 회색 배지 */
+/* 가상 드론은 회색 배지 */
 .map-marker-drone {
   background: #475569;
+}
+/* 라즈베리파이 실시간 드론 — 시안 배지 (병원 파랑과 구분), 큰 크기 */
+.map-marker-live-drone {
+  background: #06d6e0;
+  border-color: #064e52;
+}
+/* 드론 마커 — 폴링 간 위치 변경을 매끄럽게 슬라이드 */
+.live-drone-move {
+  transition: transform 1s linear;
 }
 
 /* 소방서 — "119" 텍스트 pill */
@@ -682,13 +698,9 @@ a { color: var(--accent); }
   stroke: rgba(4, 13, 18, 0.82);
   stroke-width: 4px;
 }
-.risk-map-svg .risk-section-label {
-  fill: #f6f9e8;
-  font-size: 20px;
+.risk-map-svg .risk-building-id {
+  font-size: 22px;
   font-weight: 800;
-  paint-order: stroke;
-  stroke: rgba(0, 0, 0, 0.72);
-  stroke-width: 5px;
 }
 .risk-map-svg .risk-incident-label {
   fill: #fff4e8;
@@ -697,16 +709,6 @@ a { color: var(--accent); }
   paint-order: stroke;
   stroke: rgba(13, 16, 12, 0.78);
   stroke-width: 5px;
-}
-.risk-map-svg .risk-legend-title {
-  fill: #e9fff9;
-  font-size: 14px;
-  font-weight: 800;
-}
-.risk-map-svg .risk-legend-text {
-  fill: #cde2df;
-  font-size: 12px;
-  font-weight: 650;
 }
 
 .risk-map-loading {

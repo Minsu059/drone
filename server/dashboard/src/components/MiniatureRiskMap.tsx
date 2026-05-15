@@ -1,75 +1,70 @@
 /**
  * 미니어처 SVG 위험도 맵.
- * 원본: docs/ui-mock/drone-risk-map.html (디자인 레퍼런스)
  *
- * 좌표/색상/구조는 원본 SVG와 동일.
- * 동적 데이터는 props.state (백엔드 /api/view-slot/state 응답)로 주입.
- *   - sections[id].riskLevel   → 섹션 폴리곤 색상/라벨
- *   - buildings[id].collapseProbability → 건물 내부 % 표기
- *   - road_incidents[]         → 도로 incident 아이콘+카드
- *   - drone.x/y                → 드론 마커 위치
+ * 배경: "미니어처 실사화.pdf" 에서 추출한 도시 디오라마 이미지를 그대로 사용.
+ * 그 위에 디오라마 명세 좌표(viewBox 1200×920) 기준으로 동적 레이어를 오버레이:
+ *   - buildings[id].collapseProbability → 건물 위험도 오버레이 + 배지
+ *   - road_incidents[]                 → 도로 incident 아이콘
+ *   - drone.x/y                        → 드론 마커
  */
-import type { RiskMapState, RoadIncident, IncidentType, BuildingId } from '../api/dashboard';
+import miniatureMapUrl from '../assets/miniature-map.png';
+import type { RiskMapState, RoadIncident, IncidentType } from '../api/dashboard';
 
 const VIEW_BOX_W = 1200;
-const VIEW_BOX_H = 675;
+const VIEW_BOX_H = 920;
 
-const RISK_STYLES: Record<1 | 2 | 3 | 4, { label: string; color: string }> = {
-  1: { label: '낮음',     color: '#24d36b' },
-  2: { label: '주의',     color: '#ffd63d' },
-  3: { label: '높음',     color: '#ff942d' },
-  4: { label: '매우 높음', color: '#ff3b30' },
-};
-
-const SECTION_SHAPES: Record<string, string> = {
-  A: '228,46 950,46 950,176 228,176',
-  B: '376,245 644,245 644,410 376,410',
-  C: '798,261 1126,261 1126,410 798,410',
-  D: '148,486 438,486 438,618 148,618',
-  E: '740,486 1080,486 1080,618 740,618',
-};
-
-const SECTION_LABEL_POS: Record<string, [number, number]> = {
-  A: [244, 75],
-  B: [392, 274],
-  C: [814, 290],
-  D: [164, 515],
-  E: [756, 515],
-};
-
-interface BuildingShape {
-  id: BuildingId;
+// 건물 footprint (디오라마 명세, viewBox 좌표). 위험도 오버레이용 — E(공원) 제외.
+interface BuildingDef {
+  id: string;
   x: number;
   y: number;
-  width: number;
-  height: number;
-  name: string;
+  w: number;
+  h: number;
 }
 
-const BUILDING_SHAPES: BuildingShape[] = [
-  { id: 'topLeft',     x: 250, y: 70,  width: 280, height: 88,  name: '건물' },
-  { id: 'topRight',    x: 658, y: 70,  width: 270, height: 88,  name: '건물' },
-  { id: 'center',      x: 400, y: 268, width: 220, height: 126, name: '건물' },
-  { id: 'rightMiddle', x: 820, y: 284, width: 284, height: 112, name: '건물' },
-  { id: 'bottomLeft',  x: 168, y: 506, width: 250, height: 92,  name: '건물' },
-  { id: 'bottomRight', x: 760, y: 506, width: 300, height: 92,  name: '건물' },
+const BUILDINGS: BuildingDef[] = [
+  { id: 'A', x: 0, y: 0, w: 400, h: 180 },
+  { id: 'B', x: 540, y: 0, w: 160, h: 180 },
+  { id: 'C', x: 840, y: 0, w: 360, h: 180 },
+  { id: 'D', x: 0, y: 320, w: 200, h: 240 },
+  { id: 'F', x: 780, y: 320, w: 120, h: 180 },
+  { id: 'G', x: 1040, y: 320, w: 160, h: 180 },
+  { id: 'H', x: 0, y: 700, w: 480, h: 220 },
+  { id: 'I', x: 640, y: 640, w: 180, h: 280 },
+  { id: 'J', x: 960, y: 640, w: 240, h: 280 },
 ];
 
-interface IncidentTypeConfig {
-  label: string;
-  cardWidth: number;
-  cardFill: string;
-  cardStroke: string;
+function riskOverlay(prob: number): string {
+  if (prob >= 75) return 'rgba(255, 59, 48, 0.42)';
+  if (prob >= 50) return 'rgba(255, 122, 36, 0.38)';
+  if (prob >= 25) return 'rgba(255, 200, 50, 0.34)';
+  return 'rgba(255, 220, 90, 0.24)';
+}
+function riskColor(prob: number): string {
+  if (prob >= 75) return '#ff3b30';
+  if (prob >= 50) return '#ff7a24';
+  if (prob >= 25) return '#ffc832';
+  return '#ffdc5a';
 }
 
-const INCIDENT_CONFIG: Record<IncidentType, IncidentTypeConfig> = {
-  traffic:    { label: '차량혼잡',   cardWidth: 124, cardFill: 'rgba(83, 56, 14, 0.92)',  cardStroke: '#ffc247' },
-  fallenTree: { label: '나무 쓰러짐', cardWidth: 148, cardFill: 'rgba(20, 74, 40, 0.92)',  cardStroke: '#4de46e' },
-  rubble:     { label: '건물 잔해',   cardWidth: 128, cardFill: 'rgba(96, 28, 21, 0.92)',  cardStroke: '#ff614c' },
-};
+function BuildingRisk({ bd, prob }: { bd: BuildingDef; prob: number }) {
+  return (
+    <g>
+      <rect x={bd.x} y={bd.y} width={bd.w} height={bd.h} fill={riskOverlay(prob)} />
+      <rect x={bd.x} y={bd.y} width={bd.w} height={bd.h}
+        fill="none" stroke={riskColor(prob)} strokeWidth={3} />
+      <rect x={bd.x + 8} y={bd.y + 8} width={112} height={28} rx={5}
+        fill="rgba(10, 12, 10, 0.88)" stroke={riskColor(prob)} strokeWidth={1.5} />
+      <text x={bd.x + 64} y={bd.y + 27} textAnchor="middle"
+        fontSize={14} fontWeight={800} fill={riskColor(prob)}>
+        {bd.id}동 {prob}%
+      </text>
+    </g>
+  );
+}
 
 // ============================================================
-// Incident 아이콘 (SVG path 그룹)
+// Incident 아이콘
 // ============================================================
 
 function RubbleIcon({ x, y }: { x: number; y: number }) {
@@ -131,28 +126,48 @@ function FallenTreeIcon({ x, y }: { x: number; y: number }) {
   );
 }
 
+interface IncidentTypeConfig {
+  label: string;
+  cardWidth: number;
+  cardFill: string;
+  cardStroke: string;
+}
+
+const INCIDENT_CONFIG: Record<IncidentType, IncidentTypeConfig> = {
+  traffic: { label: '차량혼잡', cardWidth: 124, cardFill: 'rgba(83, 56, 14, 0.92)', cardStroke: '#ffc247' },
+  fallenTree: { label: '나무 쓰러짐', cardWidth: 148, cardFill: 'rgba(20, 74, 40, 0.92)', cardStroke: '#4de46e' },
+  rubble: { label: '건물 잔해', cardWidth: 128, cardFill: 'rgba(96, 28, 21, 0.92)', cardStroke: '#ff614c' },
+};
+
 function IncidentCard({ incident, config }: { incident: RoadIncident; config: IncidentTypeConfig }) {
   const cardX = incident.labelX ?? incident.x + 24;
   const cardY = incident.labelY ?? incident.y - 19;
   return (
     <g>
-      <rect
-        x={cardX}
-        y={cardY}
-        width={config.cardWidth}
-        height={38}
-        rx={6}
-        fill={config.cardFill}
-        stroke={config.cardStroke}
-        strokeWidth={2}
-      />
-      <text
-        x={cardX + 20}
-        y={cardY + 25}
-        className="risk-incident-label"
-      >
+      <rect x={cardX} y={cardY} width={config.cardWidth} height={38} rx={6}
+        fill={config.cardFill} stroke={config.cardStroke} strokeWidth={2} />
+      <text x={cardX + 20} y={cardY + 25} className="risk-incident-label">
         {config.label}
       </text>
+    </g>
+  );
+}
+
+function Drone({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      <circle cx={x} cy={y} r={48} fill="none" stroke="rgba(139, 255, 94, 0.62)" strokeWidth={2} />
+      <circle cx={x} cy={y} r={27} fill="none" stroke="rgba(139, 255, 94, 0.62)" strokeWidth={2} />
+      <path
+        d={`M${x} ${y - 13}l10 10h18v8h-18l-10 10-10-10h-18v-8h18z`}
+        fill="#f4fff4"
+        stroke="#9cff79"
+        strokeWidth={2}
+      />
+      <circle cx={x - 28} cy={y - 3} r={5} fill="#f4fff4" stroke="#9cff79" strokeWidth={2} />
+      <circle cx={x + 28} cy={y - 3} r={5} fill="#f4fff4" stroke="#9cff79" strokeWidth={2} />
+      <circle cx={x - 28} cy={y + 5} r={5} fill="#f4fff4" stroke="#9cff79" strokeWidth={2} />
+      <circle cx={x + 28} cy={y + 5} r={5} fill="#f4fff4" stroke="#9cff79" strokeWidth={2} />
     </g>
   );
 }
@@ -171,98 +186,24 @@ export function MiniatureRiskMap({ state }: Props) {
       viewBox={`0 0 ${VIEW_BOX_W} ${VIEW_BOX_H}`}
       className="risk-map-svg"
       role="img"
-      aria-label="드론 기반 지진 위험도 매핑"
+      aria-label="미니어처 도시 디오라마 위험도 맵"
     >
-      <defs>
-        <pattern id="risk-grid" width="30" height="30" patternUnits="userSpaceOnUse">
-          <path d="M 30 0 L 0 0 0 30" fill="none" stroke="rgba(143, 199, 190, 0.1)" strokeWidth={1} />
-        </pattern>
-      </defs>
+      {/* 배경 — PDF 디오라마 이미지 */}
+      <image
+        href={miniatureMapUrl}
+        x={0}
+        y={0}
+        width={VIEW_BOX_W}
+        height={VIEW_BOX_H}
+        preserveAspectRatio="none"
+      />
 
-      <rect width={VIEW_BOX_W} height={VIEW_BOX_H} fill="#07131a" />
-      <rect width={VIEW_BOX_W} height={VIEW_BOX_H} fill="url(#risk-grid)" />
-
-      {/* 섹션 fills */}
+      {/* 건물 위험도 오버레이 (붕괴확률 > 0 인 건물만) */}
       <g>
-        {Object.entries(SECTION_SHAPES).map(([id, points]) => {
-          const level = (state.sections[id]?.riskLevel ?? 1) as 1 | 2 | 3 | 4;
-          const style = RISK_STYLES[level];
-          return (
-            <polygon key={`fill-${id}`} points={points} fill={style.color} opacity={0.32} />
-          );
-        })}
-      </g>
-
-      {/* 도로 surface (고정) */}
-      <g>
-        <rect x={28}  y={185} width={1144} height={46}  fill="#18201f" />
-        <rect x={28}  y={416} width={1144} height={46}  fill="#18201f" />
-        <rect x={250} y={185} width={64}   height={277} fill="#18201f" />
-        <rect x={515} y={416} width={64}   height={231} fill="#18201f" />
-        <rect x={662} y={185} width={64}   height={462} fill="#18201f" />
-
-        <line x1={28}  y1={208} x2={1172} y2={208} stroke="rgba(235, 247, 232, 0.14)" strokeWidth={1.2} />
-        <line x1={28}  y1={439} x2={1172} y2={439} stroke="rgba(235, 247, 232, 0.14)" strokeWidth={1.2} />
-        <line x1={282} y1={185} x2={282}  y2={462} stroke="rgba(235, 247, 232, 0.14)" strokeWidth={1.2} />
-        <line x1={547} y1={416} x2={547}  y2={647} stroke="rgba(235, 247, 232, 0.14)" strokeWidth={1.2} />
-        <line x1={694} y1={185} x2={694}  y2={647} stroke="rgba(235, 247, 232, 0.14)" strokeWidth={1.2} />
-      </g>
-
-      {/* 건물 (고정 위치) + 동적 붕괴확률 */}
-      <g>
-        {BUILDING_SHAPES.map((b) => {
-          const prob = state.buildings[b.id]?.collapseProbability ?? 0;
-          return (
-            <g key={`bldg-${b.id}`}>
-              <rect
-                x={b.x}
-                y={b.y}
-                width={b.width}
-                height={b.height}
-                fill="rgba(30, 95, 153, 0.64)"
-                stroke="#1e9bff"
-                strokeWidth={2}
-                style={{ filter: 'drop-shadow(0 0 8px rgba(30, 155, 255, 0.35))' }}
-              />
-              <text
-                x={b.x + b.width / 2}
-                y={b.y + b.height / 2 - 8}
-                className="risk-building-text"
-              >
-                {b.name}
-              </text>
-              <text
-                x={b.x + b.width / 2}
-                y={b.y + b.height / 2 + 20}
-                className="risk-building-text"
-              >
-                붕괴확률 {prob}%
-              </text>
-            </g>
-          );
-        })}
-      </g>
-
-      {/* 섹션 borders + 라벨 (위험도 1~4 동적) */}
-      <g>
-        {Object.entries(SECTION_SHAPES).map(([id, points]) => {
-          const level = (state.sections[id]?.riskLevel ?? 1) as 1 | 2 | 3 | 4;
-          const style = RISK_STYLES[level];
-          const [lx, ly] = SECTION_LABEL_POS[id];
-          return (
-            <g key={`border-${id}`}>
-              <polygon
-                points={points}
-                fill="none"
-                stroke={style.color}
-                strokeWidth={3}
-                strokeDasharray="12 8"
-              />
-              <text x={lx} y={ly} className="risk-section-label">
-                {id} 위험도 {level}
-              </text>
-            </g>
-          );
+        {BUILDINGS.map((bd) => {
+          const prob = state.buildings[bd.id]?.collapseProbability ?? 0;
+          if (prob <= 0) return null;
+          return <BuildingRisk key={bd.id} bd={bd} prob={prob} />;
         })}
       </g>
 
@@ -282,52 +223,7 @@ export function MiniatureRiskMap({ state }: Props) {
       </g>
 
       {/* 드론 마커 (동적, 활성 슬롯 위치) */}
-      <g>
-        <circle
-          cx={state.drone.x}
-          cy={state.drone.y}
-          r={48}
-          fill="none"
-          stroke="rgba(139, 255, 94, 0.58)"
-          strokeWidth={2}
-        />
-        <circle
-          cx={state.drone.x}
-          cy={state.drone.y}
-          r={27}
-          fill="none"
-          stroke="rgba(139, 255, 94, 0.58)"
-          strokeWidth={2}
-        />
-        <path
-          d={`M${state.drone.x} ${state.drone.y - 13}l10 10h18v8h-18l-10 10-10-10h-18v-8h18z`}
-          fill="#f4fff4"
-          stroke="#9cff79"
-          strokeWidth={2}
-        />
-        <circle cx={state.drone.x - 28} cy={state.drone.y - 3} r={5} fill="#f4fff4" stroke="#9cff79" strokeWidth={2} />
-        <circle cx={state.drone.x + 28} cy={state.drone.y - 3} r={5} fill="#f4fff4" stroke="#9cff79" strokeWidth={2} />
-        <circle cx={state.drone.x - 28} cy={state.drone.y + 5} r={5} fill="#f4fff4" stroke="#9cff79" strokeWidth={2} />
-        <circle cx={state.drone.x + 28} cy={state.drone.y + 5} r={5} fill="#f4fff4" stroke="#9cff79" strokeWidth={2} />
-      </g>
-
-      {/* 범례 (고정) */}
-      <g transform="translate(970 35)">
-        <rect width={200} height={150} rx={8}
-          fill="rgba(7, 18, 24, 0.84)" stroke="rgba(152, 224, 208, 0.2)" strokeWidth={1} />
-        <text x={16} y={28} className="risk-legend-title">섹션 위험도</text>
-        {([1, 2, 3, 4] as const).map((lvl, idx) => {
-          const y = 48 + idx * 20;
-          const s = RISK_STYLES[lvl];
-          return (
-            <g key={`lg-${lvl}`}>
-              <rect x={16} y={y - 10} width={12} height={12} rx={2} fill={s.color} />
-              <text x={38} y={y} className="risk-legend-text">위험도 {lvl} · {s.label}</text>
-            </g>
-          );
-        })}
-        <text x={16} y={132} className="risk-legend-text">건물: 붕괴확률 %</text>
-      </g>
+      <Drone x={state.drone.x} y={state.drone.y} />
     </svg>
   );
 }

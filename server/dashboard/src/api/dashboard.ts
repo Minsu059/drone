@@ -7,7 +7,6 @@
 import type { FeatureCollection } from 'geojson';
 import type {
   LatLng,
-  VirtualDrone,
   VirtualDisaster,
   ZoneRisk,
   MiniatureZone,
@@ -21,11 +20,21 @@ export interface ViewConfig {
   zoom: number;
 }
 
+/** 도로 통제 포인트 — 재난 2차 피해로 통행 차단. 경로가 회피. */
+export interface RoadBlockage {
+  id: string;
+  lat: number;
+  lon: number;
+  radius_m: number;
+  status: string;
+  type: string;
+  description: string;
+}
+
 export interface WideDashboardResponse {
   view: ViewConfig;
-  drones: VirtualDrone[];
-  disasters: VirtualDisaster[];
   miniature_entry: ZoneRisk;
+  road_blockages: RoadBlockage[];
 }
 
 export interface MiniatureDashboardResponse {
@@ -92,13 +101,22 @@ export interface RouteInfo {
   eta_min: number;
 }
 
-export interface RoutesResponse {
-  routes: RouteInfo[];
+/** 실시간 드론 위치 (라즈베리파이 position 송신 → drone_position 최신값). */
+export interface LiveDrone {
+  drone_id: string;
+  lat: number;
+  lon: number;
 }
 
-/** 각 재난 → 최근접 119안전센터 경로 (차단/정체 회피). 광역 경로 레이어용. */
-export function fetchRoutes(): Promise<RoutesResponse> {
-  return getJSON<RoutesResponse>('/api/dashboard/routes');
+/** 라즈베리파이 실시간 재난 + 경로 + 드론 위치. 광역 뷰가 폴링. */
+export interface DisastersResponse {
+  disasters: VirtualDisaster[];
+  routes: RouteInfo[];
+  drones: LiveDrone[];
+}
+
+export function fetchDisasters(): Promise<DisastersResponse> {
+  return getJSON<DisastersResponse>('/api/dashboard/disasters');
 }
 
 // ============================================================
@@ -109,8 +127,7 @@ export function fetchRoutes(): Promise<RoutesResponse> {
 export type SlotKind = 'building' | 'road';
 export type IncidentType = 'fallenTree' | 'traffic' | 'rubble';
 export type BuildingId =
-  | 'topLeft' | 'topRight' | 'center'
-  | 'rightMiddle' | 'bottomLeft' | 'bottomRight';
+  | 'A' | 'B' | 'C' | 'D' | 'F' | 'G' | 'H' | 'I' | 'J';
 
 export interface SlotMeta {
   slot_id: string;
@@ -135,7 +152,6 @@ export interface RoadIncident {
 
 export interface RiskMapState {
   active_slot_id: string;
-  sections: Record<string, { riskLevel: 1 | 2 | 3 | 4; score: number }>;
   buildings: Record<string, { collapseProbability: number }>;
   road_incidents: RoadIncident[];
   drone: { x: number; y: number };

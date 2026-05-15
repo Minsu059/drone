@@ -356,7 +356,7 @@ PUBLIC_INFRA_DATA = {
 
 
 # ============================================================
-# 미니어처 view_slot (카메라 시점 슬롯 9개)
+# 미니어처 view_slot (카메라 시점 슬롯 12개)
 # ============================================================
 """
 실제 카메라(라즈베리파이)가 미니어처 위 어느 지점을 어떤 순서로 촬영할지가
@@ -365,159 +365,34 @@ PUBLIC_INFRA_DATA = {
 대시보드 버튼으로 전환하고, 서버가 들어오는 detection을 그 슬롯으로 태깅한다.
 
 [운영 모델]
-  - 활성 슬롯: 서버가 단일 상태(active_view_slot)로 보유.
+  - 활성 슬롯: 서버가 단일 상태(active_slot_id)로 보유.
   - edge → server 페이로드는 변경 없음 (detection만 전송).
-  - server가 수신 시 active_view_slot으로 태깅 + 누적 갱신.
+  - server가 수신 시 active_slot으로 태깅 + 누적 갱신.
   - 운영자가 대시보드 버튼 클릭 → POST /api/view-slot {slot_id}
-    → 다음 detection부터 새 슬롯으로 태깅.
   - 리셋 버튼: POST /api/view-slot/reset → 누적 상태 초기화.
 
 [누적 정책]
-  - 같은 슬롯이 여러 번 활성화되면:
-      · building.collapseProbability  = max(prev, new)
-      · road_incident 세기/표시 여부  = max(prev, new) 또는 최신 갱신
-      · section.riskLevel            = 누적된 ClassifyResult 종합 점수에서 매번 재계산
+  - building.collapseProbability = max(prev, new)
+  - road_incident intensity     = max(prev, new)
   - 시연 도중 한번 떠오른 위험 표시는 사라지지 않음 (보수적).
+  - 섹션(구역) 위험도 개념은 폐기 — 건물 단위 붕괴확률 + 도로 incident만.
 
-[슬롯 정의]
-좌표는 docs/ui-mock/drone-risk-map.html 의 SVG viewBox(1200×675) 기준.
-drone_marker 좌표는 미니어처 SVG 위 드론 아이콘 위치.
+[슬롯 구성] — 디오라마 명세(건물 10개·도로 10개) 기반, 총 12슬롯
+  - 건물 슬롯 9개: b_a, b_b, b_c, b_d, b_f, b_g, b_h, b_i, b_j
+    (건물 A~J 중 E는 공원이라 슬롯 제외)
+  - 도로 슬롯 3개: r_traffic(메인 간선), r_tree(척추도로 V3), r_rubble(교차로)
+  - 좌표는 미니어처 SVG viewBox(1200×920) 기준.
+  - 정본(SSOT)은 server/view_slot.py 의 VIEW_SLOTS. 이 문서는 개요.
+
+[YOLO class_name → 슬롯 분배]
+  - building 슬롯: earthquake_building_level0/2 → collapseProbability(%)
+      level0 = base 20 + conf×30,  level2 = base 60 + conf×40
+  - road 슬롯 (target_road_incident.type 별):
+      fallenTree → typhoon_tree_level0/2
+      traffic    → traffic_congestion_level0/2
+      rubble     → road_collapse_level0/2, rock
+  - 슬롯 책임 영역 밖 클래스는 무시.
 """
-
-MINIATURE_VIEW_SLOTS = [
-    # ===== 건물 붕괴 6슬롯 =====
-    {
-        "slot_id": "b_topleft",
-        "label": "건물 좌상 (붕괴)",
-        "kind": "building",
-        "target_buildings": ["topLeft"],
-        "target_road_incident": None,
-        "section_influence": ["A"],
-        "drone_marker_svg": (390, 50),
-    },
-    {
-        "slot_id": "b_topright",
-        "label": "건물 우상 (붕괴)",
-        "kind": "building",
-        "target_buildings": ["topRight"],
-        "target_road_incident": None,
-        "section_influence": ["A"],
-        "drone_marker_svg": (793, 50),
-    },
-    {
-        "slot_id": "b_center",
-        "label": "건물 중앙 (붕괴)",
-        "kind": "building",
-        "target_buildings": ["center"],
-        "target_road_incident": None,
-        "section_influence": ["B"],
-        "drone_marker_svg": (510, 248),
-    },
-    {
-        "slot_id": "b_rightmid",
-        "label": "건물 중우 (붕괴)",
-        "kind": "building",
-        "target_buildings": ["rightMiddle"],
-        "target_road_incident": None,
-        "section_influence": ["C"],
-        "drone_marker_svg": (962, 264),
-    },
-    {
-        "slot_id": "b_bottomleft",
-        "label": "건물 좌하 (붕괴)",
-        "kind": "building",
-        "target_buildings": ["bottomLeft"],
-        "target_road_incident": None,
-        "section_influence": ["D"],
-        "drone_marker_svg": (293, 486),
-    },
-    {
-        "slot_id": "b_bottomright",
-        "label": "건물 우하 (붕괴)",
-        "kind": "building",
-        "target_buildings": ["bottomRight"],
-        "target_road_incident": None,
-        "section_influence": ["E"],
-        "drone_marker_svg": (910, 486),
-    },
-    # ===== 도로 incident 3슬롯 =====
-    {
-        "slot_id": "r_tree",
-        "label": "나무 쓰러짐",
-        "kind": "road",
-        "target_buildings": [],
-        "target_road_incident": {
-            "incident_id": "tree-1",
-            "type": "fallenTree",
-            "x": 1010,
-            "y": 439,
-        },
-        "section_influence": ["C", "E"],
-        "drone_marker_svg": (1010, 410),
-    },
-    {
-        "slot_id": "r_traffic",
-        "label": "도로 혼잡",
-        "kind": "road",
-        "target_buildings": [],
-        "target_road_incident": {
-            "incident_id": "traffic-1",
-            "type": "traffic",
-            "x": 850,
-            "y": 208,
-        },
-        "section_influence": ["A"],
-        "drone_marker_svg": (850, 175),
-    },
-    {
-        "slot_id": "r_rubble",
-        "label": "건물 잔해",
-        "kind": "road",
-        "target_buildings": [],
-        "target_road_incident": {
-            "incident_id": "rubble-1",
-            "type": "rubble",
-            "x": 548,
-            "y": 538,
-            "labelX": 592,
-            "labelY": 518,
-        },
-        "section_influence": ["D", "E"],
-        "drone_marker_svg": (548, 508),
-    },
-]
-
-# YOLO class_name → slot.kind 매핑 (분배 로직)
-# - building 슬롯: earthquake_building_* 의 max confidence
-#                  → target_buildings[*].collapseProbability  (단일이면 그대로, 복수면 균등 분배)
-# - road 슬롯: 슬롯의 target_road_incident.type에 따라
-#       fallenTree → typhoon_tree_*    의 max confidence
-#       traffic    → traffic_congestion_* 의 max confidence
-#       rubble     → road_collapse_*, rock 의 max confidence
-# 건물 슬롯에서 검출된 road_* 계열, 또는 그 반대는 무시 (해당 슬롯 책임 영역 아님).
-SLOT_CLASS_RULES = {
-    "building": {
-        "primary": ["earthquake_building_level0", "earthquake_building_level2"],
-        "scale": {
-            "earthquake_building_level0": (20.0, 30.0),  # base, conf 가중치 → %
-            "earthquake_building_level2": (60.0, 40.0),
-        },
-    },
-    "fallenTree": {"primary": ["typhoon_tree_level0", "typhoon_tree_level2"]},
-    "traffic":   {"primary": ["traffic_congestion_level0", "traffic_congestion_level2"]},
-    "rubble":    {"primary": ["road_collapse_level0", "road_collapse_level2", "rock"]},
-}
-
-# section riskLevel 산출 (누적 상태에서 매번 재계산)
-# - 각 섹션에 영향을 미친 슬롯들의 최대 collapseProbability,
-#   road_incident 세기, fire_confidence 등을 종합한 score(0~100)를
-#   임계값으로 1~4 bin 매핑.
-SECTION_RISK_BINS = [
-    (0, 25, 1),    # 낮음
-    (25, 50, 2),   # 주의
-    (50, 75, 3),   # 높음
-    (75, 101, 4),  # 매우 높음
-]
 
 
 # ============================================================
@@ -550,7 +425,7 @@ SECTION_RISK_BINS = [
 - 광역 도로: OSM (osmnx) + 차단/정체 오버레이 (사실적 임팩트 우선)
 - 행정구역 경계: VWorld GeoJSON 사용
 - 공공 인프라: 대피소/소방서/병원 통합 (공모전 어필 + 시나리오 풍부화)
-- 미니어처 카메라 시점: view_slot 9개 (건물 6 + 도로 3) — MINIATURE_VIEW_SLOTS 참조
+- 미니어처 카메라 시점: view_slot 12개 (건물 9 + 도로 3) — server/view_slot.py 참조
     · 활성 슬롯 1개, 운영자가 대시보드 버튼으로 수동 전환
     · 누적 정책: max(prev, new), 시연 도중 표시 사라지지 않음
     · 리셋 버튼 별도

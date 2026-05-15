@@ -9,6 +9,8 @@ class AnalysisData(BaseModel):
     fire_detected: bool = False
     fire_confidence: float = 0.0
     disaster_type: str = ""
+    description: str = ""
+    impact_radius_m: float = 150.0
 
 
 class DroneData(BaseModel):

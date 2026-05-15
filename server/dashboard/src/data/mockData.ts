@@ -37,6 +37,10 @@ export interface VirtualDisaster {
   road_status: RoadStatus;
   /** 재난 영향 반경 (m). 광역 뷰 위험도 원 크기. */
   impact_radius_m: number;
+  /** 실시간 재난(라즈베리파이 송신) — disaster_report DB id. 이미지 조회용. */
+  report_id?: number;
+  /** 수신 이미지 첨부 여부. */
+  has_image?: boolean;
 }
 
 export interface ZoneRisk {

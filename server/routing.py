@@ -27,6 +27,8 @@ BLOCKED_MULT = 100.0    # 차단 — 사실상 통행 불가 (연결성은 유�
 FIRE_TRUCK_KMH = 45.0
 
 _graph = None
+# 경로 계산 캐시 — (재난 id/좌표/도로상태 집합, routes). 동일 입력이면 재사용.
+_routes_cache: tuple | None = None
 
 
 def _load_graph():
@@ -46,28 +48,44 @@ def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return 2 * R * math.asin(math.sqrt(a))
 
 
-def _edge_multiplier(mid_lat: float, mid_lon: float, disasters: list[dict]) -> float:
-    """엣지 중점이 재난 영향권 안이면 가중치 배수. 가장 강한 영향을 적용."""
-    mult = 1.0
+def _impact_sources(disasters: list[dict], blockages: list[dict] | None) -> list[tuple]:
+    """도로 영향원을 공통 (lat, lon, radius_m, status) 튜플로 변환.
+
+    - 재난: road_status 가 normal 이 아니면 impact_radius_m 만큼 영향.
+    - 통제 포인트(blockages): 도로 붕괴/잔해 등 별도 차단 지점.
+      {lat, lon, radius_m, status} — status 기본 blocked.
+    """
+    sources: list[tuple] = []
     for d in disasters:
         status = d.get("road_status", "normal")
-        if status == "normal":
-            continue
-        radius = float(d.get("impact_radius_m", 0))
-        dist = _haversine_m(mid_lat, mid_lon, d["lat"], d["lon"])
-        if dist <= radius:
+        if status != "normal":
+            sources.append(
+                (d["lat"], d["lon"], float(d.get("impact_radius_m", 0)), status)
+            )
+    for b in blockages or []:
+        sources.append(
+            (b["lat"], b["lon"], float(b.get("radius_m", 0)), b.get("status", "blocked"))
+        )
+    return sources
+
+
+def _edge_multiplier(mid_lat: float, mid_lon: float, sources: list[tuple]) -> float:
+    """엣지 중점이 영향권 안이면 가중치 배수. 가장 강한 영향을 적용."""
+    mult = 1.0
+    for lat, lon, radius, status in sources:
+        if _haversine_m(mid_lat, mid_lon, lat, lon) <= radius:
             m = BLOCKED_MULT if status == "blocked" else CONGESTED_MULT
             mult = max(mult, m)
     return mult
 
 
-def _apply_weights(G, disasters: list[dict]) -> None:
-    """각 엣지에 travel 가중치(길이 × 재난 영향배수)를 부여."""
+def _apply_weights(G, sources: list[tuple]) -> None:
+    """각 엣지에 travel 가중치(길이 × 영향배수)를 부여."""
     for u, v, _k, data in G.edges(keys=True, data=True):
         length = float(data.get("length", 0.0))
         mid_lat = (G.nodes[u]["y"] + G.nodes[v]["y"]) / 2
         mid_lon = (G.nodes[u]["x"] + G.nodes[v]["x"]) / 2
-        data["travel"] = length * _edge_multiplier(mid_lat, mid_lon, disasters)
+        data["travel"] = length * _edge_multiplier(mid_lat, mid_lon, sources)
 
 
 def _make_heuristic(G):
@@ -89,13 +107,28 @@ def _path_length_m(G, path: list) -> float:
     return total
 
 
-def compute_routes(disasters: list[dict], fire_stations: list[dict]) -> list[dict]:
-    """각 재난별 최근접 119안전센터 → 재난 지점 골든타임 경로."""
+def compute_routes(
+    disasters: list[dict],
+    fire_stations: list[dict],
+    blockages: list[dict] | None = None,
+) -> list[dict]:
+    """각 재난별 최근접 119안전센터 → 재난 지점 골든타임 경로.
+
+    blockages: 재난과 별개의 도로 통제 포인트(도로 붕괴/잔해 등). 경로 우회에 반영.
+    """
     if not disasters or not fire_stations:
         return []
 
+    global _routes_cache
+    cache_key = tuple(sorted(
+        (d["id"], d["lat"], d["lon"], d.get("road_status", "normal"))
+        for d in disasters
+    ))
+    if _routes_cache is not None and _routes_cache[0] == cache_key:
+        return _routes_cache[1]
+
     G = _load_graph()
-    _apply_weights(G, disasters)
+    _apply_weights(G, _impact_sources(disasters, blockages))
     heuristic = _make_heuristic(G)
 
     fs_nodes = ox.distance.nearest_nodes(
@@ -139,4 +172,6 @@ def compute_routes(disasters: list[dict], fire_stations: list[dict]) -> list[dic
             "distance_m": round(dist_m, 1),
             "eta_min": round(dist_m / 1000 / FIRE_TRUCK_KMH * 60, 1),
         })
+
+    _routes_cache = (cache_key, routes)
     return routes

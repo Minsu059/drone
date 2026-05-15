@@ -106,6 +106,17 @@ export function DisasterDetail({ disaster, route }: Props) {
           <div className="detail-nodispatch">경로 정보 없음</div>
         )}
       </section>
+
+      {disaster.report_id != null && disaster.has_image && (
+        <section className="detail-section">
+          <h3 className="detail-section-title">현장 이미지</h3>
+          <img
+            className="detail-image"
+            src={`/api/reports/${disaster.report_id}/image`}
+            alt={disaster.description}
+          />
+        </section>
+      )}
     </aside>
   );
 }

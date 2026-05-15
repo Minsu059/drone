@@ -1,6 +1,6 @@
 /**
  * 미니어처 view_slot 컨트롤 패널.
- * - 슬롯 9개 버튼 (건물 6 + 도로 3): 클릭 시 active 전환
+ * - 슬롯 12개 버튼 (건물 9 + 도로 3): 클릭 시 active 전환
  * - 리셋 버튼: 누적 상태 초기화
  * - 활성 슬롯은 시각적으로 강조
  */
@@ -42,7 +42,7 @@ export function SlotControlPanel({
       </header>
 
       <section className="slot-group">
-        <div className="slot-group-title">건물 붕괴 (6)</div>
+        <div className="slot-group-title">건물 붕괴 ({buildingSlots.length})</div>
         <div className="slot-grid">
           {buildingSlots.map((s) => (
             <button
@@ -59,7 +59,7 @@ export function SlotControlPanel({
       </section>
 
       <section className="slot-group">
-        <div className="slot-group-title">도로 incident (3)</div>
+        <div className="slot-group-title">도로 incident ({roadSlots.length})</div>
         <div className="slot-grid">
           {roadSlots.map((s) => (
             <button
