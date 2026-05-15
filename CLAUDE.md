@@ -17,7 +17,7 @@
 | 라즈베리파이 | `~/drone/` | Linux ARM64, venv `~/drone/drone/`, `pi@dronepi.local` | edge/, OSM GraphML 캐시 보유 |
 | 메인서버 | `C:\drone\` | Windows PowerShell, `.venv\`, FastAPI :8000 + Vite :5173 | server/, dashboard |
 
-**메인서버 git 주의**: 한글 사용자명 `김민수`로 인해 Git for Windows 내장 SSH가 깨짐. 이미 `git config --global core.sshCommand "C:/Windows/System32/OpenSSH/ssh.exe"` 로 강제 설정됨.
+**메인서버 git**: remote는 HTTPS (`https://github.com/Minsu059/drone.git`), Git Credential Manager로 인증. SSH 키 없음. 라즈베리파이는 SSH(`git@github.com:...`) 그대로 — remote URL은 환경별 독립이므로 양쪽이 달라도 무방.
 
 ## 디렉토리
 
