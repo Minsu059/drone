@@ -115,25 +115,27 @@ export default function App() {
         </div>
       </header>
       <main className="app-body">
-        <div className="app-map">
-          <WideView
-            wide={wide}
-            boundary={boundary}
-            infra={infra}
+        <div className="app-main-col">
+          <div className="app-map">
+            <WideView
+              wide={wide}
+              boundary={boundary}
+              infra={infra}
+              disasters={live.disasters}
+              routes={live.routes}
+              liveDrones={live.drones}
+              onZoneClick={(zone) => setMiniatureZone(zone)}
+              focusedDisasterId={focusedDisasterId}
+            />
+          </div>
+          <DisasterBar
             disasters={live.disasters}
-            routes={live.routes}
-            liveDrones={live.drones}
-            onZoneClick={(zone) => setMiniatureZone(zone)}
-            focusedDisasterId={focusedDisasterId}
+            focusedId={focusedDisasterId}
+            onSelect={handleSelectDisaster}
           />
         </div>
         <DisasterDetail disaster={focusedDisaster} route={focusedRoute} />
       </main>
-      <DisasterBar
-        disasters={live.disasters}
-        focusedId={focusedDisasterId}
-        onSelect={handleSelectDisaster}
-      />
       <footer className="app-footer">
         © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors
         {' · '}행정구역 © <a href="https://www.vworld.kr" target="_blank" rel="noreferrer">VWorld</a> (국토교통부)

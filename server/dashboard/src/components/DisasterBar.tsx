@@ -42,7 +42,7 @@ export function DisasterBar({ disasters, focusedId, onSelect }: Props) {
                 style={{ background: TYPE_COLOR[d.disaster_type] }}
                 aria-hidden
               >
-                <Icon size={13} color="#fff" strokeWidth={2.4} />
+                <Icon size={18} color="#fff" strokeWidth={2.4} />
               </span>
               <span className="disaster-card-name">{d.description}</span>
               <span

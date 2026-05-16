@@ -83,11 +83,10 @@ function droneIcon(extraClass: string, wrapClass: string): L.DivIcon {
   });
 }
 
-// 라즈베리파이 실시간 드론 — 파란 배지. live-drone-move 클래스로 위치 변경 시
-// transform transition 을 걸어 폴링 간 이동을 매끄럽게 표현.
+// 라즈베리파이 실시간 드론 — 시안 배지.
 export const LIVE_DRONE_ICON: L.DivIcon = droneIcon(
   'map-marker-live-drone',
-  'map-marker-wrap live-drone-move',
+  'map-marker-wrap',
 );
 export const DISASTER_ICONS: Record<DisasterType, L.DivIcon> = {
   fire: disasterIcon('fire'),

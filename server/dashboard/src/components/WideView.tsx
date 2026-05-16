@@ -13,7 +13,6 @@ import {
   LayerGroup,
   useMap,
 } from 'react-leaflet';
-import type L from 'leaflet';
 import type { FeatureCollection } from 'geojson';
 import {
   type DisasterType,
@@ -126,22 +125,24 @@ function DisasterPopup({ d }: { d: VirtualDisaster }) {
 interface FocuserProps {
   disasters: VirtualDisaster[];
   focusedId: string | null;
-  markerRefs: React.MutableRefObject<Map<string, L.Marker>>;
 }
 
-function MapFocuser({ disasters, focusedId, markerRefs }: FocuserProps) {
+// 재난 선택 시 지도만 해당 위치로 이동. 마커 popup 은 띄우지 않는다
+// (재난 상세는 우측 패널에 표시 — popup 은 지도 마커를 직접 클릭할 때만).
+function MapFocuser({ disasters, focusedId }: FocuserProps) {
   const map = useMap();
+  // disasters 는 폴링마다 새 배열이므로 useEffect 의존성에 넣지 않는다.
+  // 최신값은 ref 로만 참조 — flyTo 는 focusedId 가 바뀔 때만 1회 실행.
+  const disastersRef = useRef(disasters);
+  disastersRef.current = disasters;
+
   useEffect(() => {
     if (!focusedId) return;
-    const d = disasters.find((x) => x.id === focusedId);
+    const d = disastersRef.current.find((x) => x.id === focusedId);
     if (!d) return;
     const targetZoom = Math.max(map.getZoom(), 15);
     map.flyTo([d.lat, d.lon], targetZoom, { duration: 0.6 });
-    const t = window.setTimeout(() => {
-      markerRefs.current.get(focusedId)?.openPopup();
-    }, 700);
-    return () => window.clearTimeout(t);
-  }, [focusedId, disasters, map, markerRefs]);
+  }, [focusedId, map]);
   return null;
 }
 
@@ -155,7 +156,6 @@ export function WideView({
   onZoneClick,
   focusedDisasterId,
 }: Props) {
-  const markerRefs = useRef<Map<string, L.Marker>>(new Map());
   const { view, miniature_entry, road_blockages } = wide;
 
   return (
@@ -184,11 +184,7 @@ export function WideView({
         />
       )}
 
-      <MapFocuser
-        disasters={disasters}
-        focusedId={focusedDisasterId}
-        markerRefs={markerRefs}
-      />
+      <MapFocuser disasters={disasters} focusedId={focusedDisasterId} />
 
       {/* 재난 영향 반경 — 외곽 채움 + 점선 테두리로 범위 강조 */}
       {disasters.map((d) => {
@@ -255,15 +251,12 @@ export function WideView({
           key={d.id}
           position={[d.lat, d.lon]}
           icon={DISASTER_ICONS[d.disaster_type]}
-          ref={(el) => {
-            if (el) markerRefs.current.set(d.id, el);
-            else markerRefs.current.delete(d.id);
-          }}
         >
           <Popup
             maxWidth={320}
             autoClose={false}
             closeOnClick={false}
+            autoPan={false}
           >
             <DisasterPopup d={d} />
           </Popup>
@@ -277,7 +270,7 @@ export function WideView({
           position={[b.lat, b.lon]}
           icon={BLOCKAGE_ICON}
         >
-          <Popup autoClose={false} closeOnClick={false}>
+          <Popup autoClose={false} closeOnClick={false} autoPan={false}>
             <div className="popup">
               <div className="popup-title">도로 통제</div>
               <div className="popup-meta">{b.description}</div>
@@ -294,7 +287,7 @@ export function WideView({
           position={[d.lat, d.lon]}
           icon={LIVE_DRONE_ICON}
         >
-          <Popup autoClose={false} closeOnClick={false}>
+          <Popup autoClose={false} closeOnClick={false} autoPan={false}>
             <div className="popup">
               <div className="popup-title">{d.drone_id}</div>
               <div className="popup-meta">실시간 드론 · 라즈베리파이</div>
@@ -317,7 +310,7 @@ export function WideView({
           click: () => onZoneClick(miniature_entry.name),
         }}
       >
-        <Popup autoClose={false} closeOnClick={false}>
+        <Popup autoClose={false} closeOnClick={false} autoPan={false}>
           <div className="popup">
             <div className="popup-title">{miniature_entry.name}</div>
             <div className="popup-meta">미니어처 시연 장소</div>
@@ -348,7 +341,7 @@ export function WideView({
                   weight: 1.5,
                 }}
               >
-                <Popup>
+                <Popup autoPan={false}>
                   <InfraPopup p={s} label="대피소" />
                 </Popup>
               </CircleMarker>
@@ -364,7 +357,7 @@ export function WideView({
                 position={[f.lat, f.lon]}
                 icon={INFRA_ICONS.fire_station}
               >
-                <Popup>
+                <Popup autoPan={false}>
                   <InfraPopup p={f} label="119안전센터" />
                 </Popup>
               </Marker>
