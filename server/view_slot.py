@@ -83,12 +83,58 @@ _lock = threading.Lock()
 
 _DEFAULT_ACTIVE = VIEW_SLOTS[0]["slot_id"]
 
+# ============================================================
+# 시연용 시드 — 실제 edge detection 을 기다리지 않고 "데이터가 들어온 셈 치고"
+# 미니어처 맵을 붕괴 상황으로 미리 채운다. detection 이 실제로 들어오면
+# apply_detections 가 max 누적으로 이 값들을 그대로 이어받아 갱신한다.
+# ============================================================
+
+# 건물 붕괴도 — 1~5 등급 (image.png 표기 기준, 5가 가장 심각).
+# edge detection 은 collapseProbability(0~100) 로 누적되므로, 시드 시
+# 등급 → 해당 구간 대표 확률로 변환한다 (프론트가 다시 등급으로 환산).
+_DEMO_BUILDING_LEVELS: dict[str, int] = {
+    "F": 5,  # 소형 오피스 — 전면 붕괴
+    "A": 4,  # 대형 오피스
+    "I": 4,  # 고층 타워
+    "C": 3,  # 상업 시설
+    "H": 3,  # 대단지 아파트
+    "B": 2,  # 중층 아파트
+    "J": 2,  # 고층 아파트
+    "D": 1,  # 주거
+    "G": 1,  # 소형 아파트 — 경미
+}
+
+# 도로 incident intensity(0~1) — 시연 시드에서는 도로 incident 미사용 (비움).
+# 실제 edge detection 이 들어오면 apply_detections 가 그대로 채운다.
+_DEMO_ROAD_INTENSITY: dict[str, float] = {}
+
+
+def _level_to_probability(level: int) -> float:
+    """붕괴도 등급(1~5) → 구간 중앙값 collapseProbability(%).
+    프론트 riskLevel() 의 20% 구간과 round-trip 된다 (1→10 … 5→90)."""
+    return level * 20.0 - 10.0
+
+
+def _seed_buildings() -> dict:
+    return {bid: _level_to_probability(lv) for bid, lv in _DEMO_BUILDING_LEVELS.items()}
+
+
+def _seed_road_incidents() -> dict:
+    """슬롯 정의의 target_road_incident + _DEMO_ROAD_INTENSITY 로 incident 엔트리 구성."""
+    result: dict = {}
+    for slot in VIEW_SLOTS:
+        inc = slot.get("target_road_incident")
+        if inc and inc["id"] in _DEMO_ROAD_INTENSITY:
+            result[inc["id"]] = {**inc, "intensity": _DEMO_ROAD_INTENSITY[inc["id"]]}
+    return result
+
+
 _state: dict = {
     "active_slot_id": _DEFAULT_ACTIVE,
     # building_id → collapseProbability (max 누적)
-    "buildings": {},
+    "buildings": _seed_buildings(),
     # incident_id → { id, type, x, y, labelX?, labelY?, intensity }
-    "road_incidents": {},
+    "road_incidents": _seed_road_incidents(),
     # 현재 활성 슬롯의 drone_marker (SVG 좌표). 슬롯 전환 시 즉시 이동.
     "drone_marker": list(SLOTS_BY_ID[_DEFAULT_ACTIVE]["drone_marker_svg"]),
 }
@@ -173,10 +219,11 @@ def set_active_slot(slot_id: str) -> dict:
 
 
 def reset() -> dict:
+    """시연 붕괴 시드 상태로 되돌린다 (빈 상태가 아님 — 시드가 곧 기준 상태)."""
     with _lock:
         _state["active_slot_id"] = _DEFAULT_ACTIVE
-        _state["buildings"] = {}
-        _state["road_incidents"] = {}
+        _state["buildings"] = _seed_buildings()
+        _state["road_incidents"] = _seed_road_incidents()
         _state["drone_marker"] = list(SLOTS_BY_ID[_DEFAULT_ACTIVE]["drone_marker_svg"])
     return get_map_state()
 

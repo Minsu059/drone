@@ -7,6 +7,7 @@
  *   - road_incidents[]                 → 도로 incident 아이콘
  *   - drone.x/y                        → 드론 마커
  */
+import { useState } from 'react';
 import miniatureMapUrl from '../assets/miniature-map.png';
 import type { RiskMapState, RoadIncident, IncidentType } from '../api/dashboard';
 
@@ -34,30 +35,157 @@ const BUILDINGS: BuildingDef[] = [
   { id: 'J', x: 960, y: 640, w: 240, h: 280 },
 ];
 
-function riskOverlay(prob: number): string {
-  if (prob >= 75) return 'rgba(255, 59, 48, 0.42)';
-  if (prob >= 50) return 'rgba(255, 122, 36, 0.38)';
-  if (prob >= 25) return 'rgba(255, 200, 50, 0.34)';
-  return 'rgba(255, 220, 90, 0.24)';
-}
-function riskColor(prob: number): string {
-  if (prob >= 75) return '#ff3b30';
-  if (prob >= 50) return '#ff7a24';
-  if (prob >= 25) return '#ffc832';
-  return '#ffdc5a';
-}
+// ============================================================
+// 진입 경로 — 시연용 하드코딩 (viewBox 좌표)
+//   - ENTRY: 우측 진입로 (이동경로 예시.png 의 "진입" 화살표)
+//   - OBSTACLES: 도로 위 차량 장애물 — 경로가 우회
+//   - ROUTES: 건물별 진입로→입구 최적 경로 (미리 입력, 알고리즘 없음)
+// ============================================================
 
-function BuildingRisk({ bd, prob }: { bd: BuildingDef; prob: number }) {
+const ENTRY: [number, number] = [1180, 575];
+
+// 도로 차단 #1 — 공원 바로 아래 4차선 도로 전면 차단 (차량).
+// 경로는 이 구간을 따라 주행하지 않는다 (H동만 1회 직각 횡단).
+const BLOCKED_ROAD = { x1: 240, x2: 720, y: 575, label: '도로 전면 차단' };
+const CAR = { x: 490, y: 575 };
+
+// 도로 차단 #2 — 우상단 C동 바로 아래 교차로, 나무 쓰러짐.
+const TREE_BLOCK = { x: 970, y: 250, label: '교차로 차단' };
+
+// 건물별 진입 경로 — ENTRY 에서 도로를 따라 건물 입구 앞까지.
+// 차단 #1(공원 아래 도로)·차단 #2(C동 아래 교차로)를 모두 회피.
+//   A·B·C·D·F → x770 세로도로로 올라가 상단 도로 이용 (차단 #2 좌측)
+//   G          → x970 세로도로 (나무 아래에서 멈춤)
+//   H          → 상단 도로 우회 후 x300 도로로 차단구간 직각 횡단
+//   I·J        → 차단구간 우측 도로로 진입 (횡단 없음)
+const ROUTES: Record<string, [number, number][]> = {
+  A: [ENTRY, [770, 575], [770, 250], [200, 250]],
+  B: [ENTRY, [770, 575], [770, 250], [620, 250]],
+  C: [ENTRY, [770, 575], [770, 250], [900, 250]],
+  D: [ENTRY, [770, 575], [770, 250], [150, 250]],
+  F: [ENTRY, [770, 575], [770, 415]],
+  G: [ENTRY, [970, 575], [970, 415], [1010, 415]],
+  H: [ENTRY, [770, 575], [770, 250], [300, 250], [300, 575], [300, 665], [260, 665]],
+  I: [ENTRY, [890, 575], [890, 780], [820, 780]],
+  J: [ENTRY, [1080, 575], [1080, 615]],
+};
+
+function ObstacleCar({ x, y }: { x: number; y: number }) {
   return (
     <g>
-      <rect x={bd.x} y={bd.y} width={bd.w} height={bd.h} fill={riskOverlay(prob)} />
+      <rect x={x - 34} y={y - 18} width={68} height={36} rx={9}
+        fill="#e8a13a" stroke="#1a1206" strokeWidth={2.5} />
+      <rect x={x - 19} y={y - 12} width={13} height={24} rx={3} fill="#2a2620" />
+      <rect x={x + 7} y={y - 12} width={12} height={24} rx={3} fill="#2a2620" />
+    </g>
+  );
+}
+
+// 공원 아래 4차선 전면 차단 — 도로 위 빨간 차단 바 + 차량.
+function BlockedRoad() {
+  const { x1, x2, y, label } = BLOCKED_ROAD;
+  const cx = (x1 + x2) / 2;
+  return (
+    <g>
+      <rect x={x1} y={y - 20} width={x2 - x1} height={40} rx={5}
+        fill="rgba(255,59,48,0.30)" stroke="#ff4b3a" strokeWidth={2.5} strokeDasharray="11 7" />
+      <ObstacleCar x={CAR.x} y={CAR.y} />
+      <rect x={cx - 80} y={y + 28} width={160} height={28} rx={6}
+        fill="rgba(40,6,4,0.94)" stroke="#ff4b3a" strokeWidth={1.5} />
+      <text x={cx} y={y + 47} textAnchor="middle" fontSize={15} fontWeight={800} fill="#ff6f5e">
+        {label}
+      </text>
+    </g>
+  );
+}
+
+// C동 아래 교차로 — 나무 쓰러짐 차단.
+function TreeBlock() {
+  const { x, y, label } = TREE_BLOCK;
+  return (
+    <g>
+      <circle cx={x} cy={y} r={54} fill="rgba(255,59,48,0.20)"
+        stroke="#ff4b3a" strokeWidth={2.5} strokeDasharray="11 7" />
+      <FallenTreeIcon x={x} y={y} />
+      <rect x={x - 72} y={y + 42} width={144} height={28} rx={6}
+        fill="rgba(40,6,4,0.94)" stroke="#ff4b3a" strokeWidth={1.5} />
+      <text x={x} y={y + 61} textAnchor="middle" fontSize={15} fontWeight={800} fill="#ff6f5e">
+        {label}
+      </text>
+    </g>
+  );
+}
+
+function EntryMarker({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      <circle cx={x} cy={y} r={26} fill="none" stroke="#36d1ff" strokeWidth={2} opacity={0.55} />
+      <circle cx={x} cy={y} r={15} fill="#36d1ff" stroke="#04222e" strokeWidth={3} />
+      <rect x={x - 98} y={y - 16} width={70} height={32} rx={7}
+        fill="rgba(6,20,26,0.92)" stroke="#36d1ff" strokeWidth={1.5} />
+      <text x={x - 63} y={y + 6} textAnchor="middle" fontSize={16} fontWeight={800} fill="#7fe6ff">
+        진입로
+      </text>
+    </g>
+  );
+}
+
+function RouteLayer({ route }: { route: [number, number][] }) {
+  const pts = route.map(([px, py]) => `${px},${py}`).join(' ');
+  const [ex, ey] = route[route.length - 1];
+  return (
+    <g>
+      <polyline points={pts} fill="none" stroke="#36d1ff" strokeOpacity={0.25}
+        strokeWidth={18} strokeLinejoin="round" strokeLinecap="round" />
+      <polyline points={pts} fill="none" stroke="#41dcff" strokeWidth={6}
+        strokeLinejoin="round" strokeLinecap="round" strokeDasharray="20 14">
+        <animate attributeName="stroke-dashoffset" from="34" to="0" dur="0.9s" repeatCount="indefinite" />
+      </polyline>
+      <circle cx={ex} cy={ey} r={13} fill="none" stroke="#41dcff" strokeWidth={4} />
+      <circle cx={ex} cy={ey} r={5} fill="#41dcff" />
+    </g>
+  );
+}
+
+// collapseProbability(0~100) → 붕괴도 등급 1~5 (백엔드 시드와 round-trip).
+function riskLevel(prob: number): number {
+  if (prob >= 80) return 5;
+  if (prob >= 60) return 4;
+  if (prob >= 40) return 3;
+  if (prob >= 20) return 2;
+  return 1;
+}
+
+// 등급별 스타일 — box(빗금/테두리)는 등급이 오를수록 진한 빨강,
+// text(배지 글자)는 어두운 배지 위에서 읽히도록 밝게 유지.
+const LEVEL_STYLE: Record<number, { box: string; text: string }> = {
+  1: { box: '#e0604d', text: '#ffb59f' },
+  2: { box: '#cf3f2b', text: '#ff8e6f' },
+  3: { box: '#ab2417', text: '#ff6a4a' },
+  4: { box: '#7d1410', text: '#ff5238' },
+  5: { box: '#520606', text: '#ff3b28' },
+};
+
+const RISK_LEVELS = [1, 2, 3, 4, 5];
+
+function BuildingRisk({ bd, prob }: { bd: BuildingDef; prob: number }) {
+  const level = riskLevel(prob);
+  const style = LEVEL_STYLE[level];
+  // 붕괴도 배지 — 건물 footprint 중앙에 배치.
+  const cx = bd.x + bd.w / 2;
+  const cy = bd.y + bd.h / 2;
+  return (
+    <g>
+      {/* 빗금 박스 — 건물 footprint 를 등급 색 대각 빗금으로 덮음 */}
+      <rect x={bd.x} y={bd.y} width={bd.w} height={bd.h} fill={`url(#hatch-${level})`} />
       <rect x={bd.x} y={bd.y} width={bd.w} height={bd.h}
-        fill="none" stroke={riskColor(prob)} strokeWidth={3} />
-      <rect x={bd.x + 8} y={bd.y + 8} width={112} height={28} rx={5}
-        fill="rgba(10, 12, 10, 0.88)" stroke={riskColor(prob)} strokeWidth={1.5} />
-      <text x={bd.x + 64} y={bd.y + 27} textAnchor="middle"
-        fontSize={14} fontWeight={800} fill={riskColor(prob)}>
-        {bd.id}동 {prob}%
+        fill="none" stroke={style.box} strokeWidth={3} />
+      {/* 붕괴도 배지 */}
+      <rect x={cx - 64} y={cy - 19} width={128} height={38} rx={7}
+        fill="rgba(10, 12, 10, 0.9)" stroke={style.text} strokeWidth={1.5} />
+      <text x={cx} y={cy + 8} textAnchor="middle"
+        fontSize={24} fontWeight={800} fill={style.text}>
+        붕괴도 {level}
       </text>
     </g>
   );
@@ -181,6 +309,11 @@ interface Props {
 }
 
 export function MiniatureRiskMap({ state }: Props) {
+  // 클릭된 건물 — 진입 경로 표시 대상 (같은 건물 다시 클릭 시 해제)
+  const [selected, setSelected] = useState<string | null>(null);
+  const selectedBd = selected ? BUILDINGS.find((b) => b.id === selected) : null;
+  const selectedRoute = selected ? ROUTES[selected] : undefined;
+
   return (
     <svg
       viewBox={`0 0 ${VIEW_BOX_W} ${VIEW_BOX_H}`}
@@ -188,6 +321,24 @@ export function MiniatureRiskMap({ state }: Props) {
       role="img"
       aria-label="미니어처 도시 디오라마 위험도 맵"
     >
+      {/* 등급별 대각 빗금 패턴 — 건물 footprint fill 용 */}
+      <defs>
+        {RISK_LEVELS.map((lv) => (
+          <pattern
+            key={lv}
+            id={`hatch-${lv}`}
+            patternUnits="userSpaceOnUse"
+            width={20}
+            height={20}
+            patternTransform="rotate(45)"
+          >
+            <rect width={20} height={20} fill={LEVEL_STYLE[lv].box} fillOpacity={0.16} />
+            <line x1={0} y1={0} x2={0} y2={20}
+              stroke={LEVEL_STYLE[lv].box} strokeWidth={8} strokeOpacity={0.6} />
+          </pattern>
+        ))}
+      </defs>
+
       {/* 배경 — PDF 디오라마 이미지 */}
       <image
         href={miniatureMapUrl}
@@ -222,8 +373,52 @@ export function MiniatureRiskMap({ state }: Props) {
         })}
       </g>
 
+      {/* 선택 건물 강조 테두리 */}
+      {selectedBd && (
+        <rect
+          x={selectedBd.x - 3}
+          y={selectedBd.y - 3}
+          width={selectedBd.w + 6}
+          height={selectedBd.h + 6}
+          fill="none"
+          stroke="#41dcff"
+          strokeWidth={5}
+          strokeDasharray="14 9"
+        >
+          <animate attributeName="stroke-dashoffset" from="46" to="0" dur="1s" repeatCount="indefinite" />
+        </rect>
+      )}
+
+      {/* 진입 경로 (선택된 건물) */}
+      {selectedRoute && <RouteLayer route={selectedRoute} />}
+
+      {/* 도로 차단 — 공원 아래 4차선 + C동 아래 교차로 */}
+      <BlockedRoad />
+      <TreeBlock />
+
+      {/* 진입로 마커 */}
+      <EntryMarker x={ENTRY[0]} y={ENTRY[1]} />
+
       {/* 드론 마커 (동적, 활성 슬롯 위치) */}
       <Drone x={state.drone.x} y={state.drone.y} />
+
+      {/* 클릭 레이어 — 건물 선택 → 진입 경로 표시 (최상단 투명 hit area) */}
+      <g>
+        {BUILDINGS.map((bd) => (
+          <rect
+            key={`hit-${bd.id}`}
+            x={bd.x}
+            y={bd.y}
+            width={bd.w}
+            height={bd.h}
+            fill="transparent"
+            style={{ cursor: 'pointer' }}
+            onClick={() => setSelected((cur) => (cur === bd.id ? null : bd.id))}
+          >
+            <title>{bd.id}동 — 클릭 시 진입 경로 표시</title>
+          </rect>
+        ))}
+      </g>
     </svg>
   );
 }
